@@ -9,6 +9,7 @@ from loguru import logger
 from app.bot.create_bot import bot, dp, start_bot, stop_bot
 
 from app.config import setting
+from app.core.database import create_db, drop_db
 
 
 @asynccontextmanager
@@ -17,6 +18,10 @@ async def lifespan(app : FastAPI):
         logger.info(f"Попытка запуска бота...!")
         if not os.path.exists("data"):
             os.mkdir("data")
+        if setting.FLAGCREATE:
+            await create_db()
+        if setting.FLAGDROP:
+            await drop_db()
         await start_bot()
         await bot.set_webhook(url=setting.get_webhook,
                               drop_pending_updates=True,
@@ -43,6 +48,6 @@ async def updated(request: Request):
         logger.error(f"Ошибка обработки обновлений: {e}")
 
 
-
+#
 if __name__ == "__main__":
     uvicorn.run(app, host="0.0.0.0", port=8000)

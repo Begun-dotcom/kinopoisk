@@ -11,20 +11,20 @@ class Settings(BaseSettings):
     LOG_PATH : str = "data/log.txt" # ДОБАВИТЬ / перед data
     FORMAT_LOG: str = "{time:YYYY-MM-DD at HH:mm:ss} | {level} | {message}"
     LOG_ROTATION: str = "10 MB"
-
+    STORE_URL: str = "sqlite+aiosqlite:///data/my_base.sqlite" # 4 слеша! перед деплоем
     PROXY : str
 
     BASE_URL : str
 
-    FLAG : int
+    API_KEY : str
+
+    FLAGCREATE : int
+    FLAGDROP : int
 
     @property
     def get_webhook(self):
         return f"{self.BASE_URL}/webhook"
-    @property
-    def get_url(self):
-        return (f'postgresql+asyncpg://{self.DB_USER}:{self.DB_PASSWORD}@'
-                f'{self.DB_HOST}:{self.DB_PORT}/{self.DB_NAME}')
+
 
     model_config = SettingsConfigDict(
         env_file=os.path.join(os.path.dirname(os.path.abspath(__file__)), "..", ".env")
