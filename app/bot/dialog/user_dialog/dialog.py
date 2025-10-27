@@ -2,7 +2,8 @@ from aiogram_dialog import Dialog
 
 from app.bot.dialog.user_dialog.windows import language_window, main_window, select_category_window, \
     show_category_by_id, input_search_window, show_search_movies_window, select_top_window, show_top_window, \
-    show_random_window, show_actor_movies_window, select_name_actor_window, show_all_actor_window
+    show_random_window, show_actor_movies_window, select_name_actor_window, show_all_actor_window, \
+    show_info_by_movies_windows, user_menu_windows
 
 select_language = Dialog(
     language_window()
@@ -14,7 +15,8 @@ main_menu = Dialog(
 
 select_category = Dialog(
     select_category_window(),
-    show_category_by_id()
+    show_category_by_id(),
+show_info_by_movies_windows()
 )
 
 input_search = Dialog(
@@ -37,3 +39,9 @@ select_name_actor_window(),
     show_all_actor_window(),
     show_actor_movies_window()
 )
+
+user_room = Dialog(
+    user_menu_windows(),
+)
+
+

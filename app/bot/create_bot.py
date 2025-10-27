@@ -8,7 +8,7 @@ from loguru import logger
 
 from app.bot.dialog.admin_dialog.dialog import admin_panel, admin_banner
 from app.bot.dialog.user_dialog.dialog import select_language, main_menu, select_category, input_search, select_top, \
-    show_random, show_movies_actor
+    show_random, show_movies_actor, user_room
 from app.bot.handlers.user_handler import user_router
 from app.config import setting
 from app.dao.middleware import DatabaseMiddlewareWithCommit, DatabaseMiddlewareWithoutCommit
@@ -36,6 +36,8 @@ async def start_bot():
         dp.include_router(show_movies_actor)
         dp.include_router(admin_panel)
         dp.include_router(admin_banner)
+        dp.include_router(user_room)
+
         setup_dialogs(dp)
         try:
             for user in setting.ADMIN_IDS:

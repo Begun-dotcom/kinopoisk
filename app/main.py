@@ -18,9 +18,9 @@ async def lifespan(app : FastAPI):
         logger.info(f"Попытка запуска бота...!")
         if not os.path.exists("data"):
             os.mkdir("data")
-        if setting.FLAGCREATE:
+        if setting.FLAG_CREATE:
             await create_db()
-        if setting.FLAGDROP:
+        if setting.FLAG_DROP:
             await drop_db()
         await start_bot()
         await bot.set_webhook(url=setting.get_webhook,

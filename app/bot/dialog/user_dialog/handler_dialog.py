@@ -7,7 +7,7 @@ from loguru import logger
 
 from app.bot.dialog.admin_dialog.state import AdminPapel
 from app.bot.dialog.user_dialog.state import MainMenuState, SelectCategoryState, SelectSearchState, SelectTopMovies, \
-    ShowRandomMovies, SelectMoviesByActor
+    ShowRandomMovies, SelectMoviesByActor, UserRoom
 from app.utils.utils_func import select_func
 
 
@@ -45,6 +45,8 @@ async def on_check_main(call: types.CallbackQuery, widget: Any, dialog_manager: 
                                        data={"language": select_language})
         elif menu in ["👥 По персонам", "👥 By People"]:
             await dialog_manager.start(state=SelectMoviesByActor.input_name_state, data={"language": select_language})
+        elif menu in ["👤 Личный кабинет", "👤 My Profile"]:
+            await dialog_manager.start(state=UserRoom.user_menu_state, data={"language": select_language})
         else:
             user_id = dialog_manager.start_data.get("user_id")
 
@@ -81,6 +83,11 @@ async def on_page_change(call: types.CallbackQuery, widget: Button, dialog_manag
              if page > 1:
                  dialog_manager.dialog_data["item_page"] = 19
                  dialog_manager.dialog_data["page"] = max(page - 1, 0)
+         elif widget.widget_id == "info":
+             await dialog_manager.switch_to(SelectCategoryState.show_info_by_movies)
+         elif widget.widget_id == "like":
+            pass
+
 
 
     except Exception as e:
@@ -145,8 +152,13 @@ async def on_page_change_for_actor(call: types.CallbackQuery, widget: Button, di
                 dialog_manager.dialog_data["item_page"] = min(currant_page + 1, page_len - 1)
          elif widget.widget_id == "prev":
                 dialog_manager.dialog_data["item_page"] = max(currant_page - 1, 0)
-
-
-
     except Exception as e:
                 logger.error(f"Ошибка в on_page_change : {e}")
+
+# ----------------------------------------room
+async def on_page_change_for_room(call: types.CallbackQuery, widget: Button, dialog_manager: DialogManager):
+    try:
+       if widget.widget_id == "favourites":
+            pass
+    except Exception as e:
+        logger.error(f"Ошибка в on_page_change_for_room : {e}")

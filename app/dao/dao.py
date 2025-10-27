@@ -49,7 +49,7 @@ class BannerDao(BaseDao):
             all_row = result.scalar_one_or_none()
             logger.info(f"Данные из {self.model.__name__} получены успешно")
             return all_row.image
-        except SQLAlchemyError as e:
+        except Exception as e:
             logger.error(f"Ошибка получения из таблицы {self.model.__name__}: {e}")
             return None
 

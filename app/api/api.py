@@ -240,13 +240,35 @@ class Movies:
         except Exception as e:
             logger.error(f"🔥 ошибка в find_actor_id: {e}")
             return None
+
+    async def get_info_by_movies(self, movies_id : int, language : str = "ru"):
+        try:
+            params = {
+                "api_key": self.api_key,
+                "language": language,
+                "append_to_response" : "credits"
+             }
+            url_info_by_movies = f"{self.base_url}/movie/{movies_id}"
+            request = await self._make_request(url=url_info_by_movies, params=params)
+            return request
+        except Exception as e:
+            logger.error(f"🔥 ошибка в get_category_by_id: {e}")
+            return None
 #
 # async def main():
 #     try:
 #         client = Movies()
 #         # get_cat = await client.find_all_actor_by_search(actor_name="арнольд")
-#         get_cat = await client.get_actor_movies(actor_id=1100)
-#         print(get_cat)
+#         movie_data = await client.get_info_by_movies(movies_id=507244)
+#         print(movie_data)
+#         print(movie_data["title"])  # Название фильма
+#         actors = movie_data["credits"]["cast"]
+#         for actor in actors:
+#             print(actor["name"])
+#
+#
+#
+#
 #
 #         # for a in get_cat:
 #         #     print(a.get("name"))

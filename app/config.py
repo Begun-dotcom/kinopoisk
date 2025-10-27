@@ -18,8 +18,9 @@ class Settings(BaseSettings):
 
     API_KEY : str
 
-    FLAGCREATE : int
-    FLAGDROP : int
+    FLAG_CREATE : int
+    FLAG_DROP : int
+    DEFAULT_IMG : str
 
     @property
     def get_webhook(self):
