@@ -241,13 +241,20 @@ class Movies:
             logger.error(f"🔥 ошибка в find_actor_id: {e}")
             return None
 
-    async def get_info_by_movies(self, movies_id : int, language : str = "ru"):
+    async def get_info_by_movies(self, movies_id : int, fav : bool = False, language : str = "ru"):
         try:
-            params = {
-                "api_key": self.api_key,
-                "language": language,
-                "append_to_response" : "credits"
-             }
+            params = {}
+            if fav:
+                params = {
+                    "api_key": self.api_key,
+                    "language": language,
+                }
+            else:
+                params = {
+                    "api_key": self.api_key,
+                    "language": language,
+                    "append_to_response" : "credits"
+                 }
             url_info_by_movies = f"{self.base_url}/movie/{movies_id}"
             request = await self._make_request(url=url_info_by_movies, params=params)
             return request

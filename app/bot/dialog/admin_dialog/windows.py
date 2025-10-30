@@ -1,13 +1,13 @@
 from aiogram.enums import ContentType
 from aiogram_dialog import Window
-from aiogram_dialog.widgets.input import MessageInput
+from aiogram_dialog.widgets.input import MessageInput, TextInput
 from aiogram_dialog.widgets.kbd import Group, Select, Cancel
 
 from aiogram_dialog.widgets.text import Const, Format
 
-from app.bot.dialog.admin_dialog.getters import admin_log_getter
-from app.bot.dialog.admin_dialog.handlers import on_check_admin_menu, add_image_banner
-from app.bot.dialog.admin_dialog.state import AdminPapel, AdminPanelBanner
+from app.bot.dialog.admin_dialog.getters import admin_log_getter, select_table_getter, get_status_getter
+from app.bot.dialog.admin_dialog.handlers import on_check_admin_menu, add_image_banner, select_table
+from app.bot.dialog.admin_dialog.state import AdminPapel, AdminPanelBanner, AdminUserCount
 
 
 def get_log_window():
@@ -25,10 +25,35 @@ def get_log_window():
         state=AdminPapel.admin_menu
     )
 
+def input_name_table_window():
+    return Window(
+        Const(text="Виберите стол"),
+        Group(Select(Format(text="★ {item[name]}"),
+                     id="select_category",
+                     item_id_getter=lambda item: str(item["name"]),
+                     items="text",
+                     on_click=select_table),
+              id="group_items",
+              width=2,
+              ),
+        Cancel(Const("↩️ Назад")),
+        getter=select_table_getter,
+        state=AdminPanelBanner.select_table_state
+    )
+
+
 def add_banner_windows():
     return Window(
         Const(text="Установите баннер рабочего стола"),
         MessageInput(content_types=ContentType.PHOTO, func=add_image_banner),
         Group(Cancel(Const(text="Отмена")) ),
         state=AdminPanelBanner.add_banner_state
+    )
+
+def get_status_window():
+    return Window(
+        Format(text="{text}"),
+        Cancel(Const(text="🏠 Главное меню")),
+        getter=get_status_getter,
+        state=AdminUserCount.get_user_state
     )

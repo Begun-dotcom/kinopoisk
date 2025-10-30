@@ -10,6 +10,7 @@ from app.bot.create_bot import bot, dp, start_bot, stop_bot
 
 from app.config import setting
 from app.core.database import create_db, drop_db
+from app.utils.utils_func import extract_chat_id_from_update
 
 
 @asynccontextmanager
@@ -46,6 +47,30 @@ async def updated(request: Request):
         logger.info("Обновления обработаны успешно!")
     except Exception as e:
         logger.error(f"Ошибка обработки обновлений: {e}")
+
+        # Обрабатываем ошибку контекста без зависимости от update_data
+        await handle_context_error(e, request)
+
+
+async def handle_context_error(error: Exception, request: Request):
+    """Обрабатывает ошибки контекста"""
+    if "Context not found for intent id" in str(error):
+        try:
+            # Пытаемся получить данные из запроса
+            update_data = await request.json()
+            chat_id = extract_chat_id_from_update(update_data)
+
+            if chat_id:
+                await bot.send_message(
+                    chat_id=chat_id,
+                    text="Сессия сброшена. Пожалуйста, начните заново /start"
+                )
+                logger.info(f"Сообщение о сбросе отправлено для chat_id: {chat_id}")
+            else:
+                logger.warning("Не удалось извлечь chat_id для отправки уведомления")
+
+        except Exception as inner_e:
+            logger.error(f"Ошибка при обработке context error: {inner_e}")
 
 
 #

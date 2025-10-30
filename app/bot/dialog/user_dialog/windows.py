@@ -6,12 +6,13 @@ from aiogram_dialog.widgets.text import Format, Const
 
 from app.bot.dialog.user_dialog.getters import language_getter, main_getter, select_category_getter, show_movies_getter, \
     show_search_movies_getter, select_top_getter, show_top_movies_getter, show_random_movies_getter, \
-    show_actor_movies_getter, show_all_actor_getter, show_info_getter, user_room_getter
+    show_actor_movies_getter, show_all_actor_getter, show_info_getter, user_room_getter, show_fav_getter, \
+    input_actor_getter
 from app.bot.dialog.user_dialog.handler_dialog import on_check_language, on_check_main, on_check_category, \
     on_page_change, input_search, select_top_movies, next_movies, on_page_change_for_actor, \
     get_actor_name_handler, get_actor_id_handler, on_page_change_for_room
 from app.bot.dialog.user_dialog.state import SelectLanguageState, MainMenuState, SelectCategoryState, SelectSearchState, \
-    SelectTopMovies, ShowRandomMovies, SelectMoviesByActor, UserRoom
+    SelectTopMovies, ShowRandomMovies, SelectMoviesByActor, UserRoom, UserFavoritesRoom, ShowInfo
 
 
 def language_window():
@@ -53,7 +54,7 @@ def select_category_window():
     return Window(
             DynamicMedia(selector="image"),
             Format(text="{caption}"),
-            Group(Select(Format(text="★ {item[name]}"),
+            Group(Select(Format(text="▶️ {item[name]} ◀️"),
                          id="select_category",
                          item_id_getter=lambda item: str(item["id"]),
                          items="text",
@@ -92,22 +93,23 @@ def show_category_by_id():
         getter=show_movies_getter,
         state=SelectCategoryState.show_movies_by_category
     )
+# ---------------------------------------info
 
 def show_info_by_movies_windows():
     return Window(
         Format(text="{text}"),
         DynamicMedia(selector="photo"),
-        Row(Back(Const("↩️ Назад")),
+        Row(Cancel(Const("↩️ Назад")),
             Button(Const("⭐ Добавить в избранное"), id = "like", on_click=on_page_change)),
         getter=show_info_getter,
-        state=SelectCategoryState.show_info_by_movies
+        state=ShowInfo.show_info_by_movies
     )
 
 # --------------------------------search
 
 def input_search_window():
     return Window(
-        Format(text="Введите название фильма:"),
+        Format(text="🎬 *Введите название фильма*"),
         TextInput(id="input_search",
                   on_success=input_search,
                   type_factory=str),
@@ -138,6 +140,8 @@ def show_search_movies_window():
                     when= lambda data, widget, manager:
                     data["show_button_next_page"])
         ),
+        Row(Button(Const("📖 Подробнее"), id="info", on_click=on_page_change),
+            Button(Const("⭐ Добавить в избранное"), id="like", on_click=on_page_change)),
         Back(Const("↩️ Назад")),
         getter=show_search_movies_getter,
         state=SelectSearchState.show_movies_by_search
@@ -147,6 +151,7 @@ def show_search_movies_window():
 def select_top_window():
     return Window(
             Format(text="{caption}"),
+            DynamicMedia(selector="photo"),
             Group(Select(Format(text="{item[name]}"),
                          id="select_top",
                          item_id_getter=lambda item: str(item["id"]),
@@ -179,7 +184,8 @@ def show_top_window():
         Button(Const(text="Сл. стр▶️"), id= "next_page", on_click= on_page_change,
                    when= lambda data, widget, manager:
                    data["show_button_next_page"])
-        ),
+        ),Row(Button(Const("📖 Подробнее"), id = "info", on_click=on_page_change),
+            Button(Const("⭐ Добавить в избранное"), id = "like", on_click=on_page_change)),
         Back(Const("↩️ Назад")),
         getter=show_top_movies_getter,
         state=SelectTopMovies.show_movies_for_top
@@ -191,25 +197,31 @@ def show_random_window():
     return Window(
         Format(text="{text}"),
         DynamicMedia(selector="photo"),
-        Button(Const(text="Следующий фильм▶️"), id= "next_movies", on_click= next_movies),
-        Cancel(Const("Назад")),
+        Button(Const(text="Следующий фильм▶️"), id= "next_movies", on_click= next_movies,
+               when=lambda data, widget, manager:
+               data["show_button_next"]
+               ),
+        Row(Button(Const("📖 Подробнее"), id = "info", on_click=on_page_change),
+            Button(Const("⭐ Добавить в избранное"), id = "like", on_click=on_page_change)),
+        Cancel(Const("↩️ Назад")),
         getter=show_random_movies_getter,
         state=ShowRandomMovies.show_random_state
     )
 # -------------------------------------actor
 def select_name_actor_window():
-    return Window(
-        Format(text="Введите имя актера:"),
+    return Window(DynamicMedia(selector="image"),
+        Format(text="👤 *Введите имя актера*"),
         TextInput(id="input_search",
                   on_success=get_actor_name_handler,
                   type_factory=str),
         Group(Cancel(Const("↩️ Назад")),
               ),
+        getter= input_actor_getter,
         state= SelectMoviesByActor.input_name_state
     )
 
 def show_all_actor_window():
-    return Window(
+    return Window(DynamicMedia(selector="image"),
             Format(text="{caption}"),
             Group(Select(Format(text="{item[name]}"),
                          id="select_top",
@@ -219,6 +231,7 @@ def show_all_actor_window():
                   id="group_items_top",
                   width=2,
                   ),
+            Back(Const(text="↩️ Назад")),
             getter=show_all_actor_getter,
             state=SelectMoviesByActor.show_all_actor
         )
@@ -237,6 +250,8 @@ def show_actor_movies_window():
                    when= lambda data, widget, manager:
                    data["show_button_next"])
         ),
+        Row(Button(Const("📖 Подробнее"), id="info", on_click=on_page_change),
+            Button(Const("⭐ Добавить в избранное"), id="like", on_click=on_page_change)),
         Back(Const("↩️ Назад")),
         getter=show_actor_movies_getter,
         state=SelectMoviesByActor.show_actor_movies
@@ -252,4 +267,28 @@ def user_menu_windows():
         Cancel(Const("Назад")),
         getter=user_room_getter,
         state=UserRoom.user_menu_state
+    )
+
+def show_user_fav_window():
+    return Window(
+        Format(text="{text}"),
+        DynamicMedia(selector="photo"),
+        Row(Button(Const(text="◀️"), id= "prev",
+                   on_click= on_page_change_for_actor,
+                   when=lambda data, widget, manager:
+                   data["show_button_prev"]),
+            Button(Format(text=f"{{page}}/{{total}}"), id="page",
+                   when= lambda data, widget, manager:
+                   data["show_button"]),
+            Button(Const(text="▶️"), id= "next",
+                   on_click= on_page_change_for_actor,
+                   when= lambda data, widget, manager:
+                   data["show_button_next"])
+        ),Button(Const(text="Удалить"), id= "delete",
+                 on_click=on_page_change_for_actor,
+                   when= lambda data, widget, manager:
+                   data["show_button_delete"]),
+        Cancel(Const("↩️ Назад")),
+        getter=show_fav_getter,
+        state=UserFavoritesRoom.show_fav_state
     )

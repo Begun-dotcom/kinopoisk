@@ -13,3 +13,13 @@ class BaseDao(Generic[T]):
 
     def __init__(self, session: AsyncSession):
         self._session = session
+
+    async def add(self, filters: BaseModel):
+        try:
+            filter_dict = filters.model_dump(exclude_unset=True)
+            self._session.add(self.model(**filter_dict))
+            await self._session.flush()
+            logger.info(f"Данные в {self.model.__name__} добавлены успешно")
+        except Exception as e:
+            logger.error(f"Ошибка добавления в таблицу {self.model}: {e}")
+

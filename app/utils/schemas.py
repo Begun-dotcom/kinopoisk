@@ -6,3 +6,7 @@ class SUser(BaseModel):
 
 class SUserLang(SUser):
     language : str
+
+class SUserFav(BaseModel):
+    telegram_id : int
+    movies_id : int

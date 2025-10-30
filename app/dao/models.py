@@ -17,3 +17,10 @@ class Banner(Base):
 
     def __repr__(self):
         return f"<Banner(name={self.name}, image{self.image})>"
+
+class Favorites(Base):
+    telegram_id : Mapped[int] = mapped_column(BigInteger)
+    movies_id : Mapped[int | None]
+
+    def __repr__(self):
+        return f"<Banner(name={self.telegram_id}, image{self.movies_id})>"

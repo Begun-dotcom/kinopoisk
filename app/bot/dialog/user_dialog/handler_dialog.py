@@ -7,7 +7,9 @@ from loguru import logger
 
 from app.bot.dialog.admin_dialog.state import AdminPapel
 from app.bot.dialog.user_dialog.state import MainMenuState, SelectCategoryState, SelectSearchState, SelectTopMovies, \
-    ShowRandomMovies, SelectMoviesByActor, UserRoom
+    ShowRandomMovies, SelectMoviesByActor, UserRoom, UserFavoritesRoom, ShowInfo
+from app.dao.dao import FavoriteDao
+from app.utils.schemas import SUserFav
 from app.utils.utils_func import select_func
 
 
@@ -29,28 +31,33 @@ async def on_check_language(call : types.CallbackQuery, widget : Any, dialog_man
 
 async def on_check_main(call: types.CallbackQuery, widget: Any, dialog_manager: DialogManager, select_menu: str):
     try:
+        user_id = dialog_manager.start_data.get("user_id")
         menu = select_menu
         select_language = dialog_manager.start_data.get("language")
         if menu in ["🎭 По жанрам","🎭 By Genres"]:
             await dialog_manager.start(state=SelectCategoryState.select_category_state,
-                                       data={"language": select_language})
+                                       data={"language": select_language,
+                                             "user_id" : user_id})
         elif menu in ["🔍 Поиск", "🔍 Search"]:
             await dialog_manager.start(state=SelectSearchState.input_search_state,
-                                       data={"language": select_language})
+                                       data={"language": select_language,
+                                             "user_id" : user_id})
         elif menu in ["🏆 Топ фильмов", "🏆 Top Movies"]:
             await dialog_manager.start(state=SelectTopMovies.top_menu_state,
-                                       data={"language": select_language})
+                                       data={"language": select_language,
+                                             "user_id" : user_id})
         elif menu in ["🎲 Случайный фильм", "🎲 Random Movie"]:
             await dialog_manager.start(state=ShowRandomMovies.show_random_state,
-                                       data={"language": select_language})
+                                       data={"language": select_language,
+                                             "user_id" : user_id})
         elif menu in ["👥 По персонам", "👥 By People"]:
-            await dialog_manager.start(state=SelectMoviesByActor.input_name_state, data={"language": select_language})
+            await dialog_manager.start(state=SelectMoviesByActor.input_name_state,
+                                       data={"language": select_language,
+                                             "user_id" : user_id})
         elif menu in ["👤 Личный кабинет", "👤 My Profile"]:
-            await dialog_manager.start(state=UserRoom.user_menu_state, data={"language": select_language})
-        else:
-            user_id = dialog_manager.start_data.get("user_id")
-
-
+            await dialog_manager.start(state=UserRoom.user_menu_state,
+                                       data={"language": select_language,
+                                             "user_id" : user_id})
     except Exception as e:
         logger.error(f"Ошибка в on_check_main : {e}")
 
@@ -69,13 +76,13 @@ async def on_page_change(call: types.CallbackQuery, widget: Button, dialog_manag
     try:
          page = dialog_manager.dialog_data.get("page", 1)
          currant_page = dialog_manager.dialog_data.get("item_page", 0)
-         page_len = dialog_manager.dialog_data["page_len"]
-         total_page = dialog_manager.dialog_data["total_pages"]
          if widget.widget_id == "next":
-                dialog_manager.dialog_data["item_page"] = min(currant_page + 1, page_len - 1)
+            page_len = dialog_manager.dialog_data["page_len"]
+            dialog_manager.dialog_data["item_page"] = min(currant_page + 1, page_len - 1)
          elif widget.widget_id == "prev":
                 dialog_manager.dialog_data["item_page"] = max(currant_page - 1, 0)
          elif widget.widget_id == "next_page":
+             total_page = dialog_manager.dialog_data["total_pages"]
              if page < total_page:
                  dialog_manager.dialog_data["item_page"] = 0
                  dialog_manager.dialog_data["page"] = max(page + 1, 0)
@@ -84,12 +91,19 @@ async def on_page_change(call: types.CallbackQuery, widget: Button, dialog_manag
                  dialog_manager.dialog_data["item_page"] = 19
                  dialog_manager.dialog_data["page"] = max(page - 1, 0)
          elif widget.widget_id == "info":
-             await dialog_manager.switch_to(SelectCategoryState.show_info_by_movies)
+             user_id = dialog_manager.start_data.get("user_id")
+             movies_id = dialog_manager.dialog_data["movies_id"]
+             await dialog_manager.start(ShowInfo.show_info_by_movies, data={"movies_id" : movies_id,
+                                                                            "user_id" : user_id})
          elif widget.widget_id == "like":
-            pass
-
-
-
+             session = dialog_manager.middleware_data["session_with_commit"]
+             user_id = dialog_manager.start_data.get("user_id")
+             movies_id = dialog_manager.start_data.get("movies_id", None)
+             if movies_id is None:
+                 movies_id = dialog_manager.dialog_data["movies_id"]
+             await FavoriteDao(session=session).add(filters=SUserFav(telegram_id=user_id,
+                                                                    movies_id=movies_id))
+             await call.answer("Добавлено в избранное!!!")
     except Exception as e:
                 logger.error(f"Ошибка в on_page_change : {e}")
 
@@ -138,6 +152,8 @@ async def get_actor_name_handler(message: types.Message, dialog_: Any, manager: 
 
 async def get_actor_id_handler(call : types.CallbackQuery, widget : Any, dialog_manager : DialogManager, actor_id : str):
     try:
+        dialog_manager.dialog_data["item_page"] = 0
+        dialog_manager.dialog_data["page"] = 1
         dialog_manager.dialog_data["actor_id"] = actor_id
         await dialog_manager.switch_to(SelectMoviesByActor.show_actor_movies)
     except Exception as e:
@@ -152,6 +168,13 @@ async def on_page_change_for_actor(call: types.CallbackQuery, widget: Button, di
                 dialog_manager.dialog_data["item_page"] = min(currant_page + 1, page_len - 1)
          elif widget.widget_id == "prev":
                 dialog_manager.dialog_data["item_page"] = max(currant_page - 1, 0)
+         elif widget.widget_id == "delete":
+             session = dialog_manager.middleware_data["session_with_commit"]
+             movies_id = dialog_manager.dialog_data["movies_id"]
+             user_id = dialog_manager.start_data.get("user_id")
+             await FavoriteDao(session).delete_fav_mov(filters=SUserFav(telegram_id=user_id,
+                                                                    movies_id=movies_id))
+             await call.answer("Удалено!")
     except Exception as e:
                 logger.error(f"Ошибка в on_page_change : {e}")
 
@@ -159,6 +182,9 @@ async def on_page_change_for_actor(call: types.CallbackQuery, widget: Button, di
 async def on_page_change_for_room(call: types.CallbackQuery, widget: Button, dialog_manager: DialogManager):
     try:
        if widget.widget_id == "favourites":
-            pass
+           user_id = dialog_manager.start_data.get("user_id")
+           language = dialog_manager.start_data.get("language")
+           await dialog_manager.start(state=UserFavoritesRoom.show_fav_state, data={"language": language,
+                                                                                   "user_id": user_id})
     except Exception as e:
         logger.error(f"Ошибка в on_page_change_for_room : {e}")

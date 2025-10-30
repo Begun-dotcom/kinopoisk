@@ -6,9 +6,9 @@ from aiogram.fsm.storage.memory import MemoryStorage
 from aiogram_dialog import setup_dialogs
 from loguru import logger
 
-from app.bot.dialog.admin_dialog.dialog import admin_panel, admin_banner
+from app.bot.dialog.admin_dialog.dialog import admin_panel, admin_banner, admin_user_count
 from app.bot.dialog.user_dialog.dialog import select_language, main_menu, select_category, input_search, select_top, \
-    show_random, show_movies_actor, user_room
+    show_random, show_movies_actor, user_room, user_fav_room, show_info
 from app.bot.handlers.user_handler import user_router
 from app.config import setting
 from app.dao.middleware import DatabaseMiddlewareWithCommit, DatabaseMiddlewareWithoutCommit
@@ -37,6 +37,9 @@ async def start_bot():
         dp.include_router(admin_panel)
         dp.include_router(admin_banner)
         dp.include_router(user_room)
+        dp.include_router(user_fav_room)
+        dp.include_router(show_info)
+        dp.include_router(admin_user_count)
 
         setup_dialogs(dp)
         try:

@@ -14,9 +14,10 @@ class MainMenuState(StatesGroup):
 class SelectCategoryState(StatesGroup):
     select_category_state = State()
     show_movies_by_category = State()
-    show_info_by_movies = State()
+
 
 #---------------------------------------search
+
 
 class SelectSearchState(StatesGroup):
     input_search_state = State()
@@ -43,3 +44,9 @@ class SelectMoviesByActor(StatesGroup):
 
 class UserRoom(StatesGroup):
     user_menu_state = State()
+
+class UserFavoritesRoom(StatesGroup):
+    show_fav_state = State()
+
+class ShowInfo(StatesGroup):
+    show_info_by_movies = State()

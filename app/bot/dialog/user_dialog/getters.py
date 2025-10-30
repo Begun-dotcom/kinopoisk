@@ -8,9 +8,10 @@ from loguru import logger
 from app.api.api import Movies
 from app.bot.kb.user_kb import start_kb
 from app.config import setting
-from app.dao.dao import BannerDao, UserDao
+from app.dao.dao import BannerDao, UserDao, FavoriteDao
 from app.utils.schemas import SUser, SUserLang
 from app.utils.utils import language_text, main_text_ru, main_text_en, main_top_en, main_top_ru
+from app.utils.utils_func import get_content_getter, get_default_content
 
 
 # ---------------------------------select_language
@@ -24,7 +25,7 @@ async def language_getter(dialog_manager: DialogManager, **kwargs):
         user_id = dialog_manager.start_data.get("user_id")
         session = dialog_manager.middleware_data["session_with_commit"]
         btns = start_kb(data=language_text, user_id=user_id)
-        image = MediaAttachment(ContentType.PHOTO, url="https://i.pinimg.com/originals/b5/d4/30/b5d4300ae81c9252ca5d534aef1b4f3d.jpg")
+        image = MediaAttachment(ContentType.PHOTO, url=setting.DEFAULT_IMG)
         get_banner = await BannerDao(session=session).get_banner(name="menu")
         if get_banner:
             image = MediaAttachment(ContentType.PHOTO,file_id=MediaId(get_banner))
@@ -43,8 +44,7 @@ async def main_getter(dialog_manager: DialogManager, **kwargs):
         session = dialog_manager.middleware_data["session_with_commit"]
         user = UserDao(session=session)
         banner = BannerDao(session)
-        image = MediaAttachment(ContentType.PHOTO,
-                                url="https://i.pinimg.com/originals/b5/d4/30/b5d4300ae81c9252ca5d534aef1b4f3d.jpg")
+        image = MediaAttachment(ContentType.PHOTO,url=setting.DEFAULT_IMG)
         text_btn = []
         if language == "ru":
             text_btn = main_text_ru
@@ -67,14 +67,13 @@ async def main_getter(dialog_manager: DialogManager, **kwargs):
 async def select_category_getter(dialog_manager: DialogManager, **kwargs):
     try:
         caption = "Выберите категорию: 🎭"
-        user_id = dialog_manager.start_data.get("user_id")
         session = dialog_manager.middleware_data["session_without_commit"]
         language = dialog_manager.start_data.get("language")
         client = Movies()
         banner_dao = BannerDao(session)
         get_category, banner = await asyncio.gather(client.get_category(language=language),
-                                                    banner_dao.get_banner(name="cat"))
-        image = MediaAttachment(ContentType.PHOTO, url="https://i.pinimg.com/originals/b5/d4/30/b5d4300ae81c9252ca5d534aef1b4f3d.jpg")
+                                                    banner_dao.get_banner(name="category"))
+        image = MediaAttachment(ContentType.PHOTO, url=setting.DEFAULT_IMG)
         if banner:
             image = MediaAttachment(ContentType.PHOTO,file_id=MediaId(banner))
         return {"caption": caption, "text": get_category, "image": image}
@@ -98,47 +97,22 @@ async def show_movies_getter(dialog_manager: DialogManager, **kwargs):
             item_page = dialog_manager.dialog_data.get("item_page", 0)
             current_page = item_page if item_page < page_len else 0
             film = films[current_page]
-            dialog_manager.dialog_data["movies_id"] = film.get("id")
-            photo_url = setting.DEFAULT_IMG
-            if film.get('poster_path'):
-                photo_url = f"https://image.tmdb.org/t/p/w500{film.get('poster_path')}"
             dialog_manager.dialog_data["page_len"] = page_len
-            title = film.get('title', 'Без названия')
-            overview = film.get('overview', 'Описание отсутствует')
-            rating = film.get('vote_average', '0')
-            if len(overview) > 400:
-                overview = overview[:397] + "..."
-            text = (
-                f"🎬 <b>Название:</b> {film.get('title', 'Отсутствует')}\n\n"
-                f"<b>📝 Сюжет:</b>\n{overview}\n\n"
-                f"<b>⭐ Рейтинг:</b> {'★' * min(5, int(float(rating) // 2))}{'☆' * (5 - min(5, int(float(rating) // 2)))} <code>({rating}/10)</code>"
-            )
-            return {"photo": MediaAttachment(type=ContentType.PHOTO, file_id=MediaId(photo_url)),
-                    "page": current_page + 1,
-                    "total": len(films),
-                    "text": text,
-                    "show_button": True,
-                    "show_button_next_page": True if current_page + 1 == page_len else False,
-                    "show_button_previous_page": True if current_page + 1 == 1 and page > 1 else False,
-                    "show_button_next": True if current_page + 1 < page_len else False,
-                    "show_button_prev": True if current_page + 1 > 1 else False}
+            dialog_manager.dialog_data["movies_id"] = film.get("id")
+            content = await get_content_getter(film, current_page, page_len, total_page, page, films)
+            return content
         else:
-            text = (f"🎬 Фильмов не найден\n"
-                    f"Попробуйте другой")
-            return {"photo": MediaAttachment(type=ContentType.PHOTO, file_id=MediaId("https://i.pinimg.com/originals/b5/d4/30/b5d4300ae81c9252ca5d534aef1b4f3d.jpg")),
-                    "text": text,
-                    "show_button": False,
-                    "show_button_next_page": False,
-                    "show_button_previous_page": False,
-                    "show_button_next": False,
-                    "show_button_prev": False}
+            default_content = await get_default_content()
+            return default_content
 
     except Exception as e:
         logger.error(f"Ошибка в show_movies_getter: {e}")
+        default_content = await get_default_content()
+        return default_content
 
 async def show_info_getter(dialog_manager: DialogManager, **kwargs):
     try:
-        movies_id = dialog_manager.dialog_data["movies_id"]
+        movies_id = dialog_manager.start_data.get("movies_id")
         language = dialog_manager.start_data.get("language", "ru")
         client = Movies()
         films = await client.get_info_by_movies(movies_id = movies_id, language=language)
@@ -164,13 +138,17 @@ async def show_info_getter(dialog_manager: DialogManager, **kwargs):
             return {"photo": MediaAttachment(type=ContentType.PHOTO, file_id=MediaId(image)),
                     "text": text}
         else:
-            text = (f"🎬 Фильмов не найден\n"
+            text = (f"❌ Фильм не найден\n"
                     f"Попробуйте другой")
-            return {"photo": MediaAttachment(type=ContentType.PHOTO, file_id=MediaId("https://i.pinimg.com/originals/b5/d4/30/b5d4300ae81c9252ca5d534aef1b4f3d.jpg")),
+            return {"photo": MediaAttachment(type=ContentType.PHOTO, file_id=MediaId(setting.DEFAULT_IMG)),
                     "text": text}
 
     except Exception as e:
         logger.error(f"Ошибка в show_movies_getter: {e}")
+        text = (f"❌ Фильм не найден\n"
+                f"Попробуйте другой")
+        return {"photo": MediaAttachment(type=ContentType.PHOTO, file_id=MediaId(setting.DEFAULT_IMG)),
+                "text": text}
 
 # -------------------------------search
 
@@ -188,53 +166,41 @@ async def show_search_movies_getter(dialog_manager: DialogManager, **kwargs):
         logger.debug(f"Страница {page} из {total_page}")
         if films:
             page_len = len(films)
+            dialog_manager.dialog_data["page_len"] = page_len
             item_page = dialog_manager.dialog_data.get("item_page", 0)
             current_page = item_page if item_page < page_len else 0
             film = films[current_page]
-            photo_url = f"https://image.tmdb.org/t/p/w500{film.get('poster_path')}" if film.get('poster_path') else "https://i.pinimg.com/originals/b5/d4/30/b5d4300ae81c9252ca5d534aef1b4f3d.jpg"
-            dialog_manager.dialog_data["page_len"] = page_len
-            text = (f"Название: {film.get('title', "Название отсутствует") if film.get('title') else "Название отсутствует"}\n "
-                    f"Описание: {film.get('overview', 'Описание отсутствует') if film.get('overview') else 'Описание отсутствует'}\n "
-                    )
-            return {"photo": MediaAttachment(type=ContentType.PHOTO, file_id=MediaId(photo_url)),
-                    "page": current_page + 1,
-                    "total": len(films),
-                    "text": text,
-                    "show_button": True,
-                    "show_button_next_page": True if current_page + 1 == page_len else False,
-                    "show_button_previous_page": True if current_page + 1 == 1 and page > 1 else False,
-                    "show_button_next": True if current_page + 1 < page_len else False,
-                    "show_button_prev": True if current_page + 1 > 1 else False}
+            dialog_manager.dialog_data["movies_id"] = film.get("id")
+            content = await get_content_getter(film, current_page, page_len, total_page, page, films)
+            return content
         else:
-            text = (f"🎬 Фильмов не найден\n"
-                    f"Попробуйте другой")
-            return {"photo": MediaAttachment(type=ContentType.PHOTO, file_id=MediaId("https://i.pinimg.com/originals/b5/d4/30/b5d4300ae81c9252ca5d534aef1b4f3d.jpg")),
-                    "text": text,
-                    "show_button": False,
-                    "show_button_next_page": False,
-                    "show_button_previous_page": False,
-                    "show_button_next": False,
-                    "show_button_prev": False}
+            default_content = await get_default_content()
+            return default_content
     except Exception as e:
         logger.error(f"Ошибка: {e}")
+        default_content = await get_default_content()
+        return default_content
 
 # -----------------------------top_getters
 
 async def select_top_getter(dialog_manager: DialogManager, **kwargs):
     try:
         caption = ("Выберите категорию топ 🔎:")
+        session = dialog_manager.middleware_data["session_without_commit"]
         language = dialog_manager.start_data.get("language", "ru")
+        image = setting.DEFAULT_IMG
+        banner = await BannerDao(session).get_banner(name="category")
+        if banner:
+            image = banner
         text_for_app = ""
         if language == "ru":
             text_for_app = main_top_ru
         elif language == "en":
             text_for_app = main_top_en
-        user_id = dialog_manager.start_data.get("user_id")
-        return {"caption": caption, "text": text_for_app}
-
-
+        return {"caption": caption, "text": text_for_app, "photo" : MediaAttachment(type=ContentType.PHOTO,
+                                                                                    file_id=MediaId(image))}
     except Exception as e:
-        logger.error(f"Ошибка: {e}")
+        logger.error(f"Ошибка в select_top_getter: {e}")
 
 async def show_top_movies_getter(dialog_manager: DialogManager, **kwargs):
     try:
@@ -252,34 +218,19 @@ async def show_top_movies_getter(dialog_manager: DialogManager, **kwargs):
             page_len = len(films)
             item_page = dialog_manager.dialog_data.get("item_page", 0)
             current_page = item_page if item_page < page_len else 0
-            film = films[current_page]
-            photo_url = f"https://image.tmdb.org/t/p/w500{film.get('poster_path')}" if film.get('poster_path') else "https://i.pinimg.com/originals/b5/d4/30/b5d4300ae81c9252ca5d534aef1b4f3d.jpg"
             dialog_manager.dialog_data["page_len"] = page_len
-            text = (f"Название: {film.get('title', "Название отсутствует") if film.get('title') else "Название отсутствует"}\n "
-                    f"Описание: {film.get('overview', 'Описание отсутствует') if film.get('overview') else 'Описание отсутствует'}\n "
-                    )
-            return {"photo": MediaAttachment(type=ContentType.PHOTO, file_id=MediaId(photo_url)),
-                    "page": current_page + 1,
-                    "total": len(films),
-                    "text": text,
-                    "show_button": True,
-                    "show_button_next_page": True if current_page + 1 == page_len else False,
-                    "show_button_previous_page": True if current_page + 1 == 1 and page > 1 else False,
-                    "show_button_next": True if current_page + 1 < page_len else False,
-                    "show_button_prev": True if current_page + 1 > 1 else False}
+            film = films[current_page]
+            dialog_manager.dialog_data["movies_id"] = film.get("id")
+            content = await get_content_getter(film, current_page, page_len, total_page, page, films)
+            return content
         else:
-            text = (f"🎬 Фильмов не найден\n"
-                    f"Попробуйте другой")
-            return {"photo": MediaAttachment(type=ContentType.PHOTO, file_id=MediaId("https://i.pinimg.com/originals/b5/d4/30/b5d4300ae81c9252ca5d534aef1b4f3d.jpg")),
-                    "text": text,
-                    "show_button": False,
-                    "show_button_next_page": False,
-                    "show_button_previous_page": False,
-                    "show_button_next": False,
-                    "show_button_prev": False}
+            default_content = await get_default_content()
+            return default_content
 
     except Exception as e:
-        logger.error(f"Ошибка: {e}")
+        logger.error(f"Ошибка в show_top_movies_getter: {e}")
+        default_content = await get_default_content()
+        return default_content
 
 # --------------------------------------------random
 
@@ -292,37 +243,66 @@ async def show_random_movies_getter(dialog_manager: DialogManager, **kwargs):
             count = len(topics_films)
             random_page = random.randint(0, count-1)
             film = topics_films[random_page]
-            photo_url = f"https://image.tmdb.org/t/p/w500{film.get('poster_path')}" if film.get('poster_path') else "https://i.pinimg.com/originals/b5/d4/30/b5d4300ae81c9252ca5d534aef1b4f3d.jpg"
-            text = (f"📺 Название: {film.get('title', "Название отсутствует") if film.get('title') else "Название отсутствует"}\n "
-                    f"📖 Описание: {film.get('overview', 'Описание отсутствует') if film.get('overview') else 'Описание отсутствует'}\n "
-                    f"⭐ Рейтинг: {film.get('vote_average', 'Рейтинг отсутствует') if film.get('overview') else 'Рейтинг отсутствует'} /10\n "
-                    f"📅 Год: {film.get('release_date', 'Отсутствует') if film.get('overview') else 'Отсутствует'}\n ")
+            dialog_manager.dialog_data["movies_id"] = film.get("id")
+            photo_url = setting.DEFAULT_IMG
+            if film.get('poster_path'):
+                photo_url = f"https://image.tmdb.org/t/p/w500{film.get('poster_path')}"
+            overview = film.get('overview', 'Описание отсутствует')
+            rating = film.get('vote_average', '0')
+            if len(overview) > 400:
+                overview = overview[:397] + "..."
+            text = (
+                f"🎬 <b>Название:</b> {film.get('title', 'Отсутствует')}\n\n"
+                f"<b>📝 Сюжет:</b>\n<em> {overview}</em> \n\n"
+                f"<b>⭐ Рейтинг:</b> {'★' * min(5, int(float(rating) // 2))}{'☆' * (5 - min(5, int(float(rating) // 2)))} <code>({rating}/10)</code>\n"
+                f"<b>📅 Год выхода:</b> {film.get('release_date', 'Отсутствует')[:4] if film.get('overview') else 'Отсутствует'}\n ")
             return {"photo": MediaAttachment(type=ContentType.PHOTO, file_id=MediaId(photo_url)),
                     "text": text,
+                    "show_button_next": True
                     }
         else:
-            text = (f"🎬 Фильмов не найден\n"
-                    f"Попробуйте еще раз")
+            text = (f"❌ Раздел временно не доступен\n"
+                    f"Попробуйте позже")
             return {"text" : text,
-                    "photo": MediaAttachment(type=ContentType.PHOTO, file_id=MediaId("https://i.pinimg.com/originals/b5/d4/30/b5d4300ae81c9252ca5d534aef1b4f3d.jpg"))
+                    "photo": MediaAttachment(type=ContentType.PHOTO, file_id=MediaId(setting.DEFAULT_IMG)),
+                    "show_button_next": False
                     }
 
     except Exception as e:
-        logger.error(f"Ошибка: {e}")
-
+        logger.error(f"Ошибка в show_random_movies_getter: {e}")
+        text = (f"❌ Раздел временно не доступен\n"
+                f"Попробуйте позже")
+        return {"text": text,
+                "photo": MediaAttachment(type=ContentType.PHOTO, file_id=MediaId(setting.DEFAULT_IMG)),
+                "show_button_next": False
+                }
 # ------------------------------------------actor
+async def input_actor_getter(dialog_manager: DialogManager, **kwargs):
+    try:
+        session = dialog_manager.middleware_data["session_without_commit"]
+        banner_dao = BannerDao(session)
+        banner = await banner_dao.get_banner(name="category")
+        image = setting.DEFAULT_IMG
+        if banner:
+            image = banner
+        return {"imag e": MediaAttachment(ContentType.PHOTO,file_id=MediaId(image))}
+    except Exception as e:
+        logger.error(f"Ошибка в select_category_getter: {e}")
+
 
 async def show_all_actor_getter(dialog_manager: DialogManager, **kwargs):
     try:
-        caption = ("Выберите актера:")
+        caption = ("👤 *Выберите актера*")
+        session = dialog_manager.middleware_data["session_with_commit"]
         language = dialog_manager.start_data.get("language", "ru")
         actor = dialog_manager.dialog_data["actor_name"]
-        user_id = dialog_manager.start_data.get("user_id")
+        image = setting.DEFAULT_IMG
+        get_banner = await BannerDao(session=session).get_banner(name="menu")
+        if get_banner:
+            image = get_banner
         client = Movies()
         result = await client.find_all_actor_by_search(actor_name=actor, language=language)
-        return {"caption": caption, "text": result}
-
-
+        return {"caption": caption, "text": result, "image" : MediaAttachment(type=ContentType.PHOTO, file_id=MediaId(image))}
     except Exception as e:
         logger.error(f"Ошибка: {e}")
 
@@ -337,12 +317,22 @@ async def show_actor_movies_getter(dialog_manager: DialogManager, **kwargs):
             page_len = len(all_by_actor)
             item_page = dialog_manager.dialog_data.get("item_page", 0)
             current_page = item_page if item_page < page_len else 0
-            film = all_by_actor[current_page]
-            photo_url = f"https://image.tmdb.org/t/p/w500{film.get('poster_path')}" if film.get('poster_path') else "https://i.pinimg.com/originals/b5/d4/30/b5d4300ae81c9252ca5d534aef1b4f3d.jpg"
             dialog_manager.dialog_data["page_len"] = page_len
-            text = (f"Название: {film.get('title', 'Название отсутствует') if film.get('title') else 'Название отсутствует'}\n "
-                    f"Описание: {film.get('overview', 'Описание отсутствует') if film.get('overview') else 'Описание отсутствует'}\n "
-                    )
+            film = all_by_actor[current_page]
+            dialog_manager.dialog_data["movies_id"] = film.get("id")
+            photo_url = setting.DEFAULT_IMG
+            if film.get('poster_path'):
+                photo_url = f"https://image.tmdb.org/t/p/w500{film.get('poster_path')}"
+
+            overview = film.get('overview', 'Описание отсутствует')
+            rating = film.get('vote_average', '0')
+            if len(overview) > 400:
+                overview = overview[:397] + "..."
+            text = (
+                f"🎬 <b>Название:</b> {film.get('title', 'Отсутствует')}\n\n"
+                f"<b>📝 Сюжет:</b>\n<em> {overview}</em> \n\n"
+                f"<b>⭐ Рейтинг:</b> {'★' * min(5, int(float(rating) // 2))}{'☆' * (5 - min(5, int(float(rating) // 2)))} <code>({rating}/10)</code>\n"
+                f"<b>📅 Год выхода:</b> {film.get('release_date', 'Отсутствует')[:4] if film.get('overview') else 'Отсутствует'}\n ")
             return {"photo": MediaAttachment(type=ContentType.PHOTO, file_id=MediaId(photo_url)),
                     "page": current_page + 1,
                     "total": len(all_by_actor),
@@ -354,19 +344,26 @@ async def show_actor_movies_getter(dialog_manager: DialogManager, **kwargs):
             text = (f"🎬 Фильмов с выбраным актером не найдено\n"
                     f"Попробуйте еще раз")
             return {"text" : text,
-                    "photo": MediaAttachment(type=ContentType.PHOTO, file_id=MediaId("https://i.pinimg.com/originals/b5/d4/30/b5d4300ae81c9252ca5d534aef1b4f3d.jpg")),
+                    "photo": MediaAttachment(type=ContentType.PHOTO, file_id=MediaId(setting.DEFAULT_IMG)),
                     "show_button": False,
                     "show_button_next": False,
                     "show_button_prev": False
                     }
 
     except Exception as e:
-        logger.error(f"Ошибка: {e}")
+        logger.error(f"Ошибка в show_actor_movies_getter: {e}")
+        text = (f"🎬 Фильмов с выбраным актером не найдено\n"
+                f"Попробуйте еще раз")
+        return {"text": text,
+                "photo": MediaAttachment(type=ContentType.PHOTO, file_id=MediaId(setting.DEFAULT_IMG)),
+                "show_button": False,
+                "show_button_next": False,
+                "show_button_prev": False
+                }
 
 # ---------------------------------------------room
 async def user_room_getter(dialog_manager: DialogManager, **kwargs):
     try:
-        language = dialog_manager.start_data.get("language", "ru")
         session = dialog_manager.middleware_data["session_with_commit"]
         caption = "Спонсор MTDb"
         banner = setting.DEFAULT_IMG
@@ -378,3 +375,61 @@ async def user_room_getter(dialog_manager: DialogManager, **kwargs):
 
     except Exception as e:
         logger.error(f"Ошибка в user_room_getter: {e}")
+
+async def show_fav_getter(dialog_manager: DialogManager, **kwargs):
+    try:
+        language = dialog_manager.start_data.get("language", "ru")
+        user_id = dialog_manager.start_data.get("user_id")
+        session = dialog_manager.middleware_data["session_with_commit"]
+        user_fav = await FavoriteDao(session=session).get_fav_mov(filters=SUser(telegram_id = user_id))
+
+        if user_fav:
+            client = Movies()
+            tasks = []
+            for movies_id in user_fav:
+                tasks.append(asyncio.create_task(client.get_info_by_movies(movies_id= movies_id, fav= True , language=language)))
+            result = await asyncio.gather(*tasks)
+            page_len = len(result)
+            item_page = dialog_manager.dialog_data.get("item_page", 0)
+            current_page = item_page if item_page < page_len else 0
+            film = result[current_page]
+            dialog_manager.dialog_data["movies_id"] = film.get("id")
+            photo_url = setting.DEFAULT_IMG
+            dialog_manager.dialog_data["page_len"] = page_len
+            if film.get('poster_path'):
+                photo_url = f"https://image.tmdb.org/t/p/w500{film.get('poster_path')}"
+            text = (
+                    f"<b>📋 КАРТОЧКА ФИЛЬМА</b>\n\n"
+                    f"<b>🎭 Название:</b> {film.get('title', 'Не указано')}\n\n"
+                    f"<b>📖 Описание:</b> <em> {film.get('overview', 'Описание отсутствует') if film.get('overview') else 'Описание отсутствует'}</em> \n\n "
+                    f"<b>⭐ Оценка:</b> {'★' * round(float(film.get('vote_average', 0)) / 2)} {'☆' * (5 - round(float(film.get('vote_average', 0)) / 2))} <code>({film.get('vote_average', '0')}/10)</code>\n"
+                    f"<b>📅 Год выхода:</b> {film.get('release_date', '?')[:4] if film.get('release_date') else '?'}\n\n"
+                    )
+            return {"photo": MediaAttachment(type=ContentType.PHOTO, file_id=MediaId(photo_url)),
+                    "page": current_page + 1,
+                    "total": len(result),
+                    "text": text,
+                    "show_button": True,
+                    "show_button_next": True if current_page + 1 < page_len else False,
+                    "show_button_prev": True if current_page + 1 > 1 else False,
+                    "show_button_delete" : True}
+
+        else:
+            text = f"❌ Список пуст\n"
+            return {"text" : text,
+                    "photo": MediaAttachment(type=ContentType.PHOTO, file_id=MediaId(setting.DEFAULT_IMG)),
+                    "show_button": False,
+                    "show_button_next": False,
+                    "show_button_prev": False,
+                    "show_button_delete" : False}
+
+    except Exception as e:
+        logger.error(f"Ошибка: {e}")
+        text = (f"🎬 Произошла ошибка\n"
+                f"Попробуйте еще раз")
+        return {"text": text,
+                "photo": MediaAttachment(type=ContentType.PHOTO, file_id=MediaId(setting.DEFAULT_IMG)),
+                "show_button": False,
+                "show_button_next": False,
+                "show_button_prev": False
+                }
