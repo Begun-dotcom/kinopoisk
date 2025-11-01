@@ -384,35 +384,35 @@ async def show_fav_getter(dialog_manager: DialogManager, **kwargs):
         user_fav = await FavoriteDao(session=session).get_fav_mov(filters=SUser(telegram_id = user_id))
         if user_fav:
             client = Movies()
-            page_len = len(user_fav)
+            len_movies_id = len(user_fav)
             item_page = dialog_manager.dialog_data.get("item_page", 0)
+            page = item_page if item_page < len_movies_id else 0
             movies_id = user_fav[item_page]
+            print(f"len list {len_movies_id}")
+            print(f"page {page}")
             film = await client.get_info_by_movies(movies_id=movies_id, fav=True, language=language)
-            if film:
-                current_page = item_page if item_page < page_len else 0
-                dialog_manager.dialog_data["movies_id"] = film.get("id")
-                photo_url = setting.DEFAULT_IMG
-                dialog_manager.dialog_data["page_len"] = page_len
-                if film.get('poster_path'):
-                    photo_url = f"https://image.tmdb.org/t/p/w500{film.get('poster_path')}"
-                text = (
-                        f"<b>📋 КАРТОЧКА ФИЛЬМА</b>\n\n"
-                        f"<b>🎭 Название:</b> {film.get('title', 'Не указано')}\n\n"
-                        f"<b>📖 Описание:</b> <em> {film.get('overview', 'Описание отсутствует') if film.get('overview') else 'Описание отсутствует'}</em> \n\n "
-                        f"<b>⭐ Оценка:</b> {'★' * round(float(film.get('vote_average', 0)) / 2)} {'☆' * (5 - round(float(film.get('vote_average', 0)) / 2))} <code>({film.get('vote_average', '0')}/10)</code>\n"
-                        f"<b>📅 Год выхода:</b> {film.get('release_date', '?')[:4] if film.get('release_date') else '?'}\n\n"
-                        )
-                return {"photo": MediaAttachment(type=ContentType.PHOTO, file_id=MediaId(photo_url)),
-                        "page": current_page + 1,
-                        "total": page_len,
-                        "text": text,
-                        "show_button": True,
-                        "show_button_next": True if current_page + 1 < page_len else False,
-                        "show_button_prev": True if current_page + 1 > 1 else False,
-                        "show_button_delete" : True}
-            else:
-                default_content = await get_default_content()
-                return default_content
+
+            dialog_manager.dialog_data["movies_id"] = film.get("id")
+            dialog_manager.dialog_data["page_len"] = len_movies_id
+            photo_url = setting.DEFAULT_IMG
+            if film.get('poster_path'):
+                photo_url = f"https://image.tmdb.org/t/p/w500{film.get('poster_path')}"
+            text = (
+                    f"<b>📋 КАРТОЧКА ФИЛЬМА</b>\n\n"
+                    f"<b>🎭 Название:</b> {film.get('title', 'Не указано')}\n\n"
+                    f"<b>📖 Описание:</b> <em> {film.get('overview', 'Описание отсутствует') if film.get('overview') else 'Описание отсутствует'}</em> \n\n "
+                    f"<b>⭐ Оценка:</b> {'★' * round(float(film.get('vote_average', 0)) / 2)} {'☆' * (5 - round(float(film.get('vote_average', 0)) / 2))} <code>({film.get('vote_average', '0')}/10)</code>\n"
+                    f"<b>📅 Год выхода:</b> {film.get('release_date', '?')[:4] if film.get('release_date') else '?'}\n\n"
+                    )
+            return {"photo": MediaAttachment(type=ContentType.PHOTO, file_id=MediaId(photo_url)),
+                    "page": page + 1,
+                    "total": len_movies_id,
+                    "text": text,
+                    "show_button": True,
+                    "show_button_next": True if page + 1 < len_movies_id else False,
+                    "show_button_prev": True if page + 1 > 1 else False,
+                    "show_button_delete" : True}
+
 
         else:
             text = f"❌ Список пуст\n"

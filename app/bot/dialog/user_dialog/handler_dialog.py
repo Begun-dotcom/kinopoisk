@@ -172,6 +172,7 @@ async def on_page_change_for_actor(call: types.CallbackQuery, widget: Button, di
              session = dialog_manager.middleware_data["session_with_commit"]
              movies_id = dialog_manager.dialog_data["movies_id"]
              user_id = dialog_manager.start_data.get("user_id")
+             dialog_manager.dialog_data["item_page"] = max(currant_page - 1, 0)
              await FavoriteDao(session).delete_fav_mov(filters=SUserFav(telegram_id=user_id,
                                                                     movies_id=movies_id))
              await call.answer("Удалено!")
