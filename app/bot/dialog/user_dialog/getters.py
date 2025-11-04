@@ -6,6 +6,7 @@ from aiogram_dialog.api.entities import MediaAttachment, MediaId
 from loguru import logger
 
 from app.api.api import Movies
+from app.api.redis import MoviesCached
 from app.bot.kb.user_kb import start_kb
 from app.config import setting
 from app.dao.dao import BannerDao, UserDao, FavoriteDao
@@ -115,7 +116,10 @@ async def show_info_getter(dialog_manager: DialogManager, **kwargs):
         movies_id = dialog_manager.start_data.get("movies_id")
         language = dialog_manager.start_data.get("language", "ru")
         client = Movies()
-        films = await client.get_info_by_movies(movies_id = movies_id, language=language)
+        client_cached = MoviesCached()
+        films = await client_cached.get_content_for_fav(movies_id=movies_id,
+                                                        language=language,
+                                                        client_movies = client)
         if films:
             actors_list = []
             actors = films["credits"]["cast"]

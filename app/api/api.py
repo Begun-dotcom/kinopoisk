@@ -1,4 +1,5 @@
 import asyncio
+import json
 import random
 from datetime import datetime
 from typing import Optional
@@ -256,6 +257,7 @@ class Movies:
                     "append_to_response" : "credits"
                  }
             url_info_by_movies = f"{self.base_url}/movie/{movies_id}"
+
             request = await self._make_request(url=url_info_by_movies, params=params)
             return request
         except Exception as e:
