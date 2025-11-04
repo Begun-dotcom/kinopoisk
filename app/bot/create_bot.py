@@ -1,11 +1,13 @@
 from aiogram import Dispatcher, Bot
+from aiogram.fsm.storage.base import DefaultKeyBuilder
+from aiogram.fsm.storage.redis import RedisStorage
 from aiogram.types import BotCommand, BotCommandScopeDefault
 from aiogram.client.default import DefaultBotProperties
 from aiogram.enums import ParseMode
 from aiogram.fsm.storage.memory import MemoryStorage
 from aiogram_dialog import setup_dialogs
 from loguru import logger
-
+import redis.asyncio as redis
 from app.bot.dialog.admin_dialog.dialog import admin_panel, admin_banner, admin_user_count
 from app.bot.dialog.user_dialog.dialog import select_language, main_menu, select_category, input_search, select_top, \
     show_random, show_movies_actor, user_room, user_fav_room, show_info
@@ -14,8 +16,11 @@ from app.config import setting
 from app.dao.middleware import DatabaseMiddlewareWithCommit, DatabaseMiddlewareWithoutCommit
 
 bot = Bot(token=setting.BOT, default=DefaultBotProperties(parse_mode=ParseMode.HTML))
-
-dp = Dispatcher(storage=MemoryStorage())
+redis_client = redis.Redis(host=setting.REDIS_HOST,
+                               port=setting.REDIS_PORT,
+                               db=0)
+storage = RedisStorage(redis=redis_client,key_builder=DefaultKeyBuilder(with_destiny=True))
+dp = Dispatcher(storage=storage)
 
 async def bot_command():
     command = [BotCommand(command="start", description="Запуск KinoPoisk")]

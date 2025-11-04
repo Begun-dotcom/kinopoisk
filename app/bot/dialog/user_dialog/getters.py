@@ -388,8 +388,6 @@ async def show_fav_getter(dialog_manager: DialogManager, **kwargs):
             item_page = dialog_manager.dialog_data.get("item_page", 0)
             page = item_page if item_page < len_movies_id else 0
             movies_id = user_fav[item_page]
-            print(f"len list {len_movies_id}")
-            print(f"page {page}")
             film = await client.get_info_by_movies(movies_id=movies_id, fav=True, language=language)
 
             dialog_manager.dialog_data["movies_id"] = film.get("id")

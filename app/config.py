@@ -22,6 +22,13 @@ class Settings(BaseSettings):
     FLAG_DROP : int
     DEFAULT_IMG : str
 
+    REDIS_HOST : str
+    REDIS_PORT : int
+
+    @property
+    def get_url_redis(self):
+        return f"redis://{self.REDIS_HOST}:{self.REDIS_PORT}/0"
+
     @property
     def get_webhook(self):
         return f"{self.BASE_URL}/webhook"
