@@ -89,7 +89,8 @@ async def show_movies_getter(dialog_manager: DialogManager, **kwargs):
         language = dialog_manager.start_data.get("language", "ru")
         aio_session = dialog_manager.middleware_data["aiohttp_session"]
         client = Movies(aio_session)
-        content = await client.get_category_by_id(genre_id=genre_id, page= page, language=language)
+        client_cached = MoviesCached()
+        content = await client_cached.get_content_by_category(genre_id=genre_id, page= page, language=language, client_movies=client)
         films = content.get("result", None)
         total_page = content.get("total_pages", None)
         dialog_manager.dialog_data["total_pages"] = total_page
@@ -121,8 +122,8 @@ async def show_info_getter(dialog_manager: DialogManager, **kwargs):
         client = Movies(aio_session)
         client_cached = MoviesCached()
         films = await client_cached.get_content_for_fav(movies_id=movies_id,
-                                                        language=language,
-                                                        client_movies = client)
+                                                     language=language,
+                                                     client_movies = client)
         if films:
             actors_list = []
             actors = films["credits"]["cast"]
@@ -166,7 +167,9 @@ async def show_search_movies_getter(dialog_manager: DialogManager, **kwargs):
         language = dialog_manager.start_data.get("language", "ru")
         aio_session = dialog_manager.middleware_data["aiohttp_session"]
         client = Movies(aio_session)
-        content = await client.get_search_movies(query=search_movies, page=page, language=language)
+        client_cached = MoviesCached()
+        content = await client_cached.get_content_search_movies(query=search_movies, page=page, language=language,
+                                                              client_movies=client)
         films = content.get("result", None)
         total_page = content.get("total_pages", None)
         dialog_manager.dialog_data["total_pages"] = total_page
@@ -217,7 +220,9 @@ async def show_top_movies_getter(dialog_manager: DialogManager, **kwargs):
         language = dialog_manager.start_data.get("language", "ru")
         aio_session = dialog_manager.middleware_data["aiohttp_session"]
         client = Movies(aio_session)
-        content = await client.get_top_movies(top= top_movies, page=page, language=language)
+        client_cached = MoviesCached()
+        content = await client_cached.get_content_top_movies(top= top_movies, page=page, language=language,
+                                                                client_movies=client)
         films = content.get("result", None)
         total_page = content.get("total_pages", None)
         dialog_manager.dialog_data["total_pages"] = total_page
@@ -323,7 +328,8 @@ async def show_actor_movies_getter(dialog_manager: DialogManager, **kwargs):
         actor_id = dialog_manager.dialog_data["actor_id"]
         aio_session = dialog_manager.middleware_data["aiohttp_session"]
         client = Movies(aio_session)
-        result = await client.get_actor_movies(actor_id=actor_id, language=language)
+        client_cached = MoviesCached()
+        result = await client_cached.get_content_actor_movies(actor_id=actor_id, language=language, client_movies=client)
         all_by_actor = result.get("cast", None)
         if all_by_actor:
             page_len = len(all_by_actor)
@@ -393,18 +399,19 @@ async def show_fav_getter(dialog_manager: DialogManager, **kwargs):
         language = dialog_manager.start_data.get("language", "ru")
         user_id = dialog_manager.start_data.get("user_id")
         session = dialog_manager.middleware_data["session_with_commit"]
-        aio_session = dialog_manager.middleware_data["aiohttp_session"]
-        print(aio_session)
         user_fav = await FavoriteDao(session=session).get_fav_mov(filters=SUser(telegram_id = user_id))
         if user_fav:
             aio_session = dialog_manager.middleware_data["aiohttp_session"]
             client = Movies(aio_session)
+            client_cached = MoviesCached()
             len_movies_id = len(user_fav)
             item_page = dialog_manager.dialog_data.get("item_page", 0)
             page = item_page if item_page < len_movies_id else 0
             movies_id = user_fav[item_page]
-            film = await client.get_info_by_movies(movies_id=movies_id, fav=True, language=language)
-
+            film = await client_cached.get_user_fav(movies_id=movies_id,
+                                                        language=language,
+                                                        client_movies=client,
+                                                        user_id=user_id)
             dialog_manager.dialog_data["movies_id"] = film.get("id")
             dialog_manager.dialog_data["page_len"] = len_movies_id
             photo_url = setting.DEFAULT_IMG

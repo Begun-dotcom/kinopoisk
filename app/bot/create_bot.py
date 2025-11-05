@@ -22,6 +22,8 @@ redis_client = redis.Redis(host=setting.REDIS_HOST,
 storage = RedisStorage(redis=redis_client,key_builder=DefaultKeyBuilder(with_destiny=True))
 dp = Dispatcher(storage=storage)
 
+aiohttp_middleware = AiohttpSessionMiddleware()
+
 async def bot_command():
     command = [BotCommand(command="start", description="Запуск KinoPoisk")]
     await bot.set_my_commands(commands=command, scope=BotCommandScopeDefault())
@@ -31,7 +33,7 @@ async def start_bot():
         await bot_command()
         dp.update.middleware(DatabaseMiddlewareWithCommit())
         dp.update.middleware(DatabaseMiddlewareWithoutCommit())
-        dp.update.middleware(AiohttpSessionMiddleware())
+        dp.update.middleware(aiohttp_middleware)
         dp.include_router(user_router)
         dp.include_router(select_language)
         dp.include_router(main_menu)
@@ -60,8 +62,7 @@ async def start_bot():
 
 async def stop_bot():
     try:
-        aio_client = AiohttpSessionMiddleware()
-        await aio_client.close()
+        await aiohttp_middleware.close()
         for admin in setting.ADMIN_IDS:
            await bot.send_message(chat_id=admin, text="Бот остановлен")
 
