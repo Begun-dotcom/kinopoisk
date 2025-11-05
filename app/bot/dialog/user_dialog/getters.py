@@ -70,7 +70,8 @@ async def select_category_getter(dialog_manager: DialogManager, **kwargs):
         caption = "Выберите категорию: 🎭"
         session = dialog_manager.middleware_data["session_without_commit"]
         language = dialog_manager.start_data.get("language")
-        client = Movies()
+        aio_session = dialog_manager.middleware_data["aiohttp_session"]
+        client = Movies(aio_session)
         banner_dao = BannerDao(session)
         get_category, banner = await asyncio.gather(client.get_category(language=language),
                                                     banner_dao.get_banner(name="category"))
@@ -86,7 +87,8 @@ async def show_movies_getter(dialog_manager: DialogManager, **kwargs):
         genre_id = dialog_manager.dialog_data["category_id"]
         page = dialog_manager.dialog_data.get("page", 1)
         language = dialog_manager.start_data.get("language", "ru")
-        client = Movies()
+        aio_session = dialog_manager.middleware_data["aiohttp_session"]
+        client = Movies(aio_session)
         content = await client.get_category_by_id(genre_id=genre_id, page= page, language=language)
         films = content.get("result", None)
         total_page = content.get("total_pages", None)
@@ -115,7 +117,8 @@ async def show_info_getter(dialog_manager: DialogManager, **kwargs):
     try:
         movies_id = dialog_manager.start_data.get("movies_id")
         language = dialog_manager.start_data.get("language", "ru")
-        client = Movies()
+        aio_session = dialog_manager.middleware_data["aiohttp_session"]
+        client = Movies(aio_session)
         client_cached = MoviesCached()
         films = await client_cached.get_content_for_fav(movies_id=movies_id,
                                                         language=language,
@@ -161,7 +164,8 @@ async def show_search_movies_getter(dialog_manager: DialogManager, **kwargs):
         search_movies = dialog_manager.dialog_data.get("input_search")
         page = dialog_manager.dialog_data.get("page", 1)
         language = dialog_manager.start_data.get("language", "ru")
-        client = Movies()
+        aio_session = dialog_manager.middleware_data["aiohttp_session"]
+        client = Movies(aio_session)
         content = await client.get_search_movies(query=search_movies, page=page, language=language)
         films = content.get("result", None)
         total_page = content.get("total_pages", None)
@@ -211,7 +215,8 @@ async def show_top_movies_getter(dialog_manager: DialogManager, **kwargs):
         top_movies = dialog_manager.dialog_data.get("select_top")
         page = dialog_manager.dialog_data.get("page", 1)
         language = dialog_manager.start_data.get("language", "ru")
-        client = Movies()
+        aio_session = dialog_manager.middleware_data["aiohttp_session"]
+        client = Movies(aio_session)
         content = await client.get_top_movies(top= top_movies, page=page, language=language)
         films = content.get("result", None)
         total_page = content.get("total_pages", None)
@@ -241,7 +246,8 @@ async def show_top_movies_getter(dialog_manager: DialogManager, **kwargs):
 async def show_random_movies_getter(dialog_manager: DialogManager, **kwargs):
     try:
         language = dialog_manager.start_data.get("language", "ru")
-        client = Movies()
+        aio_session = dialog_manager.middleware_data["aiohttp_session"]
+        client = Movies(aio_session)
         topics_films = await client.get_random_movies(language=language)
         if topics_films:
             count = len(topics_films)
@@ -304,7 +310,8 @@ async def show_all_actor_getter(dialog_manager: DialogManager, **kwargs):
         get_banner = await BannerDao(session=session).get_banner(name="menu")
         if get_banner:
             image = get_banner
-        client = Movies()
+        aio_session = dialog_manager.middleware_data["aiohttp_session"]
+        client = Movies(aio_session)
         result = await client.find_all_actor_by_search(actor_name=actor, language=language)
         return {"caption": caption, "text": result, "image" : MediaAttachment(type=ContentType.PHOTO, file_id=MediaId(image))}
     except Exception as e:
@@ -314,7 +321,8 @@ async def show_actor_movies_getter(dialog_manager: DialogManager, **kwargs):
     try:
         language = dialog_manager.start_data.get("language", "ru")
         actor_id = dialog_manager.dialog_data["actor_id"]
-        client = Movies()
+        aio_session = dialog_manager.middleware_data["aiohttp_session"]
+        client = Movies(aio_session)
         result = await client.get_actor_movies(actor_id=actor_id, language=language)
         all_by_actor = result.get("cast", None)
         if all_by_actor:
@@ -385,9 +393,12 @@ async def show_fav_getter(dialog_manager: DialogManager, **kwargs):
         language = dialog_manager.start_data.get("language", "ru")
         user_id = dialog_manager.start_data.get("user_id")
         session = dialog_manager.middleware_data["session_with_commit"]
+        aio_session = dialog_manager.middleware_data["aiohttp_session"]
+        print(aio_session)
         user_fav = await FavoriteDao(session=session).get_fav_mov(filters=SUser(telegram_id = user_id))
         if user_fav:
-            client = Movies()
+            aio_session = dialog_manager.middleware_data["aiohttp_session"]
+            client = Movies(aio_session)
             len_movies_id = len(user_fav)
             item_page = dialog_manager.dialog_data.get("item_page", 0)
             page = item_page if item_page < len_movies_id else 0

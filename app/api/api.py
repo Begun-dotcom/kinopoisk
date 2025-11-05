@@ -12,7 +12,8 @@ from app.config import setting
 
 
 class Movies:
-    def __init__(self,):
+    def __init__(self, session : aiohttp.ClientSession):
+        self.session = session
         self.api_key = setting.API_KEY
         self.base_url = "https://api.themoviedb.org/3"
 
@@ -35,24 +36,21 @@ class Movies:
         try:
             attempt = 0
             attempt_max = 2
-            timeout = ClientTimeout(total=30, connect=10, sock_connect=10, sock_read=20)
             while attempt < attempt_max:
                 content_error = False
-                async with aiohttp.ClientSession(timeout=timeout) as session:
-                    try:
-                        async with session.get(url=url,proxy=setting.PROXY,params=params) as response:
-                            logger.info(f"Попытка подключения к URL {url}, с параметрами {params}")
-                            if response.status == 200:
-                                logger.debug(f"Успешное подключения к URL {url}, с параметрами {params}")
-                                return await response.json()
-                            else:
-                                logger.error(f"❌ HTTP ошибка {response.status} для {url}")
-                                content_error = True
-
-                    except asyncio.TimeoutError:
+                try:
+                    async with self.session.get(url=url,proxy=setting.PROXY,params=params) as response:
+                        logger.info(f"Попытка подключения к URL {url}, с параметрами {params}")
+                        if response.status == 200:
+                            logger.debug(f"Успешное подключения к URL {url}, с параметрами {params}")
+                            return await response.json()
+                        else:
+                            logger.error(f"❌ HTTP ошибка {response.status} для {url}")
+                            content_error = True
+                except asyncio.TimeoutError:
                         logger.error(f"⏰ Таймаут запроса к {url}")
                         content_error = True
-                    except Exception as e:
+                except Exception as e:
                         logger.error(f"⚠️ Ошибка соединения: {e}")
                         content_error = True
                 if content_error:
@@ -143,38 +141,37 @@ class Movies:
             random_year = random.randint(2000, current_year)
             page = 1
             min_votes = 1000
-            async with aiohttp.ClientSession() as session:
-                try:
-                    test_query = f"{self.base_url}/discover/movie?api_key={self.api_key}&language={language}&page=1&primary_release_year={random_year}&vote_count.gte={min_votes}&sort_by=popularity.desc"
-                    async with session.get(url=test_query, proxy=setting.PROXY) as response:
-                        logger.info(f"🔄 Попытка получения количество страниц рандомного фильма, год {random_year}")
-                        if response.status == 200:
-                            request = await response.json()
-                            page = request.get("total_pages", 1)
-                            logger.info(f"✅ Успешное получение количество страниц рандомного фильма, год {random_year}, стр. {page}")
-                        else:
-                            logger.error(f"❌ Ошибка получения страниц в get_top_movies: {response.status}")
-                except asyncio.TimeoutError:
-                    logger.error(f"⏰ Таймаут запроса получения страниц в get_top_movies")
-                except Exception as e:
-                    logger.error(f"⚠️ Неизвестная ошибка получения страниц при соединении: {e}")
+            test_query = f"{self.base_url}/discover/movie?api_key={self.api_key}&language={language}&page=1&primary_release_year={random_year}&vote_count.gte={min_votes}&sort_by=popularity.desc"
+            try:
+                async with self.session.get(url=test_query, proxy=setting.PROXY) as response:
+                    logger.info(f"🔄 Попытка получения количество страниц рандомного фильма, год {random_year}")
+                    if response.status == 200:
+                        request = await response.json()
+                        page = request.get("total_pages", 1)
+                        logger.info(f"✅ Успешное получение количество страниц рандомного фильма, год {random_year}, стр. {page}")
+                    else:
+                        logger.error(f"❌ Ошибка получения страниц в get_top_movies: {response.status}")
+            except asyncio.TimeoutError:
+                logger.error(f"⏰ Таймаут запроса получения страниц в get_top_movies")
+            except Exception as e:
+                logger.error(f"⚠️ Неизвестная ошибка получения страниц при соединении: {e}")
 
-                try:
-                    random_page = random.randint(1, page)
-                    url_random_movies = f"{self.base_url}/discover/movie?api_key={self.api_key}&language={language}&page={random_page}&primary_release_year={random_year}&vote_count.gte={min_votes}&sort_by=popularity.desc"
-                    async with session.get(url=url_random_movies, proxy=setting.PROXY) as response:
-                        logger.info(f"🔄 Попытка получения рандомного фильма, год {random_year}, стр. {random_page}")
-                        if response.status == 200:
-                            request = await response.json()
-                            logger.info(f"✅ Успешное получение рандомного фильма, год {random_year}, стр. {random_page}")
-                            return request.get("results", None)
-                        else:
-                            logger.error(f"❌ Ошибка получения данных в get_top_movies: {response.status}")
-                            return None
-                except asyncio.TimeoutError:
-                    logger.error(f"⏰ Таймаут запроса в get_top_movies")
-                except Exception as e:
-                    logger.error(f"⚠️ Неизвестная ошибка соединения: {e}")
+            try:
+                random_page = random.randint(1, page)
+                url_random_movies = f"{self.base_url}/discover/movie?api_key={self.api_key}&language={language}&page={random_page}&primary_release_year={random_year}&vote_count.gte={min_votes}&sort_by=popularity.desc"
+                async with self.session.get(url=url_random_movies, proxy=setting.PROXY) as response:
+                    logger.info(f"🔄 Попытка получения рандомного фильма, год {random_year}, стр. {random_page}")
+                    if response.status == 200:
+                        request = await response.json()
+                        logger.info(f"✅ Успешное получение рандомного фильма, год {random_year}, стр. {random_page}")
+                        return request.get("results", None)
+                    else:
+                        logger.error(f"❌ Ошибка получения данных в get_top_movies: {response.status}")
+                        return None
+            except asyncio.TimeoutError:
+                logger.error(f"⏰ Таймаут запроса в get_top_movies")
+            except Exception as e:
+                logger.error(f"⚠️ Неизвестная ошибка соединения: {e}")
         except Exception as e:
             logger.error(f"🔥 ошибка в get_top_movies: {e}")
             return None

@@ -13,7 +13,7 @@ from app.bot.dialog.user_dialog.dialog import select_language, main_menu, select
     show_random, show_movies_actor, user_room, user_fav_room, show_info
 from app.bot.handlers.user_handler import user_router
 from app.config import setting
-from app.dao.middleware import DatabaseMiddlewareWithCommit, DatabaseMiddlewareWithoutCommit
+from app.dao.middleware import DatabaseMiddlewareWithCommit, DatabaseMiddlewareWithoutCommit, AiohttpSessionMiddleware
 
 bot = Bot(token=setting.BOT, default=DefaultBotProperties(parse_mode=ParseMode.HTML))
 redis_client = redis.Redis(host=setting.REDIS_HOST,
@@ -31,6 +31,7 @@ async def start_bot():
         await bot_command()
         dp.update.middleware(DatabaseMiddlewareWithCommit())
         dp.update.middleware(DatabaseMiddlewareWithoutCommit())
+        dp.update.middleware(AiohttpSessionMiddleware())
         dp.include_router(user_router)
         dp.include_router(select_language)
         dp.include_router(main_menu)
@@ -45,7 +46,6 @@ async def start_bot():
         dp.include_router(user_fav_room)
         dp.include_router(show_info)
         dp.include_router(admin_user_count)
-
         setup_dialogs(dp)
         try:
             for user in setting.ADMIN_IDS:
@@ -60,6 +60,8 @@ async def start_bot():
 
 async def stop_bot():
     try:
+        aio_client = AiohttpSessionMiddleware()
+        await aio_client.close()
         for admin in setting.ADMIN_IDS:
            await bot.send_message(chat_id=admin, text="Бот остановлен")
 
