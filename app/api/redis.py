@@ -1,7 +1,4 @@
 import json
-
-import aiohttp
-from aiogram.types import BufferedInputFile
 from loguru import logger
 
 from app.config import setting

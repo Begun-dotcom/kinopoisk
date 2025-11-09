@@ -54,7 +54,7 @@ def select_category_window():
     return Window(
             DynamicMedia(selector="image"),
             Format(text="{caption}"),
-            Group(Select(Format(text="▶️ {item[name]} ◀️"),
+            Group(Select(Format(text="{item[name]}"),
                          id="select_category",
                          item_id_getter=lambda item: str(item["id"]),
                          items="text",
@@ -223,7 +223,7 @@ def select_name_actor_window():
 def show_all_actor_window():
     return Window(DynamicMedia(selector="image"),
             Format(text="{caption}"),
-            Group(Select(Format(text="{item[name]}"),
+            Group(Select(Format(text="👤 {item[name]}"),
                          id="select_top",
                          item_id_getter=lambda item: str(item["id"]),
                          items="text",

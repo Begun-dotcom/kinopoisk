@@ -12,7 +12,7 @@ from app.config import setting
 from app.dao.dao import BannerDao, UserDao, FavoriteDao
 from app.utils.schemas import SUser, SUserLang
 from app.utils.utils import language_text, main_text_ru, main_text_en, main_top_en, main_top_ru
-from app.utils.utils_func import get_content_getter, get_default_content
+from app.utils.utils_func import get_content_getter, get_default_content, create_complete_category_mapping, get_genres
 
 
 # ---------------------------------select_language
@@ -33,6 +33,7 @@ async def language_getter(dialog_manager: DialogManager, **kwargs):
         return {"caption": caption, "text": btns, "image": image}
     except Exception as e:
         logger.error(f"Ошибка в language_getter: {e}")
+        return None
 
 # ------------------------------main_getter
 
@@ -41,7 +42,7 @@ async def main_getter(dialog_manager: DialogManager, **kwargs):
         caption = ("🎬 <b>Главное меню «CINEMA WORLD»</b>\n"
                    "Выберите способ поиска идеального фильма: 🍿")
         user_id = dialog_manager.start_data.get("user_id")
-        language = dialog_manager.start_data.get("language")
+        language = dialog_manager.start_data.get("language", "ru")
         session = dialog_manager.middleware_data["session_with_commit"]
         user = UserDao(session=session)
         banner = BannerDao(session)
@@ -61,6 +62,7 @@ async def main_getter(dialog_manager: DialogManager, **kwargs):
         return {"caption": caption, "text": btns, "image": image}
     except Exception as e:
         logger.error(f"Ошибка в main_getter: {e}")
+        return None
 
 
 #------------------------------category_getters
@@ -78,9 +80,11 @@ async def select_category_getter(dialog_manager: DialogManager, **kwargs):
         image = MediaAttachment(ContentType.PHOTO, url=setting.DEFAULT_IMG)
         if banner:
             image = MediaAttachment(ContentType.PHOTO,file_id=MediaId(banner))
-        return {"caption": caption, "text": get_category, "image": image}
+        category_content = await create_complete_category_mapping(get_category)
+        return {"caption": caption, "text": category_content, "image": image}
     except Exception as e:
         logger.error(f"Ошибка в select_category_getter: {e}")
+        return None
 
 async def show_movies_getter(dialog_manager: DialogManager, **kwargs):
     try:
@@ -130,13 +134,22 @@ async def show_info_getter(dialog_manager: DialogManager, **kwargs):
             for actor in actors:
                 actors_list.append(actor.get('name'))
             image = setting.DEFAULT_IMG
-            if films.get("poster_path"):
-                image = f"https://image.tmdb.org/t/p/w500{films.get('poster_path')}"
+            overview = films.get("overview", "Описание отсутствует")
+            if len(overview) > 400:
+                overview = overview[:396] + "..."
+            genres_list = films.get("genres", "Отсутствует")
+            genres = await get_genres(genres_list=genres_list)
+            if films.get("backdrop_path"):
+                image = f"https://image.tmdb.org/t/p/w500{films.get('backdrop_path ')}"
             text = (
                     f"<b>📋 КАРТОЧКА ФИЛЬМА</b>\n\n"
-                    f"<b>🎭 Название:</b> {films.get('title', 'Не указано')}\n"
+                    f"<b>🎬 Название:</b> {films.get('title', 'Не указано')}\n"
+                    f"<b>📖 Описание:</b> <em> {overview}</em> \n\n "
+                    f"<b>⏰ Продолжительность:</b> <em> {films.get('runtime', 'Не указано')} мин</em> \n "
+                    f"<b>🎭 Жанр:</b> <em> {genres}</em> \n"
                     f"<b>⭐ Оценка:</b> {'★' * round(float(films.get('vote_average', 0)) / 2)} {'☆' * (5 - round(float(films.get('vote_average', 0)) / 2))} <code>({films.get('vote_average', '0')}/10)</code>\n"
-                    f"<b>📅 Год выхода:</b> {films.get('release_date', '?')[:4] if films.get('release_date') else '?'}\n\n"
+                    f"<b>📅 Год выхода:</b> {films.get('release_date', '?')[:4] if films.get('release_date') else '?'}\n"
+                    f"<b>💰 Сборы:</b> $ {films.get('revenue', 'Информация отсутствует')}\n\n"
                     f"<b>👤 В ролях:</b>\n" +
                     "\n".join([f"▫️ {actor}" for actor in actors_list[:8]])
             )
@@ -254,6 +267,7 @@ async def show_random_movies_getter(dialog_manager: DialogManager, **kwargs):
         aio_session = dialog_manager.middleware_data["aiohttp_session"]
         client = Movies(aio_session)
         topics_films = await client.get_random_movies(language=language)
+        print(topics_films)
         if topics_films:
             count = len(topics_films)
             random_page = random.randint(0, count-1)
@@ -415,12 +429,15 @@ async def show_fav_getter(dialog_manager: DialogManager, **kwargs):
             dialog_manager.dialog_data["movies_id"] = film.get("id")
             dialog_manager.dialog_data["page_len"] = len_movies_id
             photo_url = setting.DEFAULT_IMG
+            overview = film.get("overview", "Описание отсутствует")
+            if len(overview) > 400:
+                overview = overview[:396] + "..."
             if film.get('poster_path'):
                 photo_url = f"https://image.tmdb.org/t/p/w500{film.get('poster_path')}"
             text = (
                     f"<b>📋 КАРТОЧКА ФИЛЬМА</b>\n\n"
                     f"<b>🎭 Название:</b> {film.get('title', 'Не указано')}\n\n"
-                    f"<b>📖 Описание:</b> <em> {film.get('overview', 'Описание отсутствует') if film.get('overview') else 'Описание отсутствует'}</em> \n\n "
+                    f"<b>📖 Описание:</b> <em> {overview}</em> \n\n "
                     f"<b>⭐ Оценка:</b> {'★' * round(float(film.get('vote_average', 0)) / 2)} {'☆' * (5 - round(float(film.get('vote_average', 0)) / 2))} <code>({film.get('vote_average', '0')}/10)</code>\n"
                     f"<b>📅 Год выхода:</b> {film.get('release_date', '?')[:4] if film.get('release_date') else '?'}\n\n"
                     )

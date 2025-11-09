@@ -4,12 +4,13 @@ from aiogram import types
 from aiogram_dialog import DialogManager
 from aiogram_dialog.widgets.kbd import Button
 from loguru import logger
+from pydantic import ValidationError
 
 from app.bot.dialog.admin_dialog.state import AdminPapel
 from app.bot.dialog.user_dialog.state import MainMenuState, SelectCategoryState, SelectSearchState, SelectTopMovies, \
     ShowRandomMovies, SelectMoviesByActor, UserRoom, UserFavoritesRoom, ShowInfo
 from app.dao.dao import FavoriteDao
-from app.utils.schemas import SUserFav
+from app.utils.schemas import SUserFav, SSearchMovies
 from app.utils.utils_func import select_func
 
 
@@ -35,26 +36,32 @@ async def on_check_main(call: types.CallbackQuery, widget: Any, dialog_manager: 
         menu = select_menu
         select_language = dialog_manager.start_data.get("language")
         if menu in ["🎭 По жанрам","🎭 By Genres"]:
+            logger.info(f"Переход в {menu}")
             await dialog_manager.start(state=SelectCategoryState.select_category_state,
                                        data={"language": select_language,
                                              "user_id" : user_id})
         elif menu in ["🔍 Поиск", "🔍 Search"]:
+            logger.info(f"Переход в {menu}")
             await dialog_manager.start(state=SelectSearchState.input_search_state,
                                        data={"language": select_language,
                                              "user_id" : user_id})
         elif menu in ["🏆 Топ фильмов", "🏆 Top Movies"]:
+            logger.info(f"Переход в {menu}")
             await dialog_manager.start(state=SelectTopMovies.top_menu_state,
                                        data={"language": select_language,
                                              "user_id" : user_id})
         elif menu in ["🎲 Случайный фильм", "🎲 Random Movie"]:
+            logger.info(f"Переход в {menu}")
             await dialog_manager.start(state=ShowRandomMovies.show_random_state,
                                        data={"language": select_language,
                                              "user_id" : user_id})
         elif menu in ["👥 По персонам", "👥 By People"]:
+            logger.info(f"Переход в {menu}")
             await dialog_manager.start(state=SelectMoviesByActor.input_name_state,
                                        data={"language": select_language,
                                              "user_id" : user_id})
         elif menu in ["👤 Личный кабинет", "👤 My Profile"]:
+            logger.info(f"Переход в {menu}")
             await dialog_manager.start(state=UserRoom.user_menu_state,
                                        data={"language": select_language,
                                              "user_id" : user_id})
@@ -67,6 +74,7 @@ async def on_check_category(call: types.CallbackQuery, widget: Any, dialog_manag
     try:
         dialog_manager.dialog_data["category_id"] = select_category
         dialog_manager.dialog_data["item_page"] = 0
+        logger.info(f"Выбор категории id {select_category}")
         await dialog_manager.switch_to(SelectCategoryState.show_movies_by_category)
     except Exception as e:
         logger.error(f"Ошибка в on_check_category : {e}")
@@ -111,12 +119,17 @@ async def on_page_change(call: types.CallbackQuery, widget: Button, dialog_manag
 
 async def input_search(message: types.Message, dialog_: Any, manager: DialogManager, data: str):
     try:
+        search_movies = SSearchMovies(search=data)
         manager.dialog_data["item_page"] = 0
         manager.dialog_data["page"] = 1
-        manager.dialog_data["input_search"] = data
+        manager.dialog_data["input_search"] = search_movies.search
+        logger.info(f"Поиск по {data} и переход к просмотру")
         await manager.switch_to(SelectSearchState.show_movies_by_search)
+    except ValidationError as e:
+        error_message = e.errors()[0]['msg'].split(",")[-1]
+        await message.answer(error_message)
     except Exception as e:
-        await message.answer("Не корректные данные!!!")
+        await message.answer("❌ Произошла ошибка повторите позже!!!")
         logger.error(f"Ошибка в input_search : {e}")
 
 # --------------------------------------top
@@ -126,8 +139,8 @@ async def select_top_movies(call : types.CallbackQuery, widget : Any, dialog_man
         dialog_manager.dialog_data["item_page"] = 0
         dialog_manager.dialog_data["page"] = 1
         dialog_manager.dialog_data["select_top"] = top
+        logger.info(f"Выбрана категория {top} и переход к просмотру")
         await dialog_manager.switch_to(SelectTopMovies.show_movies_for_top)
-
     except Exception as e:
         logger.error(f"Ошибка в select_top_movies : {e}")
 
@@ -143,8 +156,13 @@ async def next_movies(call: types.CallbackQuery, widget: Button, dialog_manager:
 # ---------------------------------------actor
 async def get_actor_name_handler(message: types.Message, dialog_: Any, manager: DialogManager, data: str):
     try:
-        manager.dialog_data["actor_name"] = data
+        search_actor = SSearchMovies(search=data)
+        manager.dialog_data["actor_name"] = search_actor.search
+        logger.info(f"Выбран актер {data} и переход к просмотру актеров")
         await manager.switch_to(SelectMoviesByActor.show_all_actor)
+    except ValidationError as e:
+        error_message = e.errors()[0]['msg'].split(",")[-1]
+        await message.answer(error_message)
     except Exception as e:
         await message.answer("Не корректные данные!!!")
         logger.error(f"Ошибка в get_actor_name_handler : {e}")
@@ -155,6 +173,7 @@ async def get_actor_id_handler(call : types.CallbackQuery, widget : Any, dialog_
         dialog_manager.dialog_data["item_page"] = 0
         dialog_manager.dialog_data["page"] = 1
         dialog_manager.dialog_data["actor_id"] = actor_id
+        logger.info(f"Выбрано id актера {actor_id} и переход к просмотру")
         await dialog_manager.switch_to(SelectMoviesByActor.show_actor_movies)
     except Exception as e:
         await call.answer("Не корректные данные!!!")
@@ -177,7 +196,7 @@ async def on_page_change_for_actor(call: types.CallbackQuery, widget: Button, di
                                                                     movies_id=movies_id))
              await call.answer("Удалено!")
     except Exception as e:
-                logger.error(f"Ошибка в on_page_change : {e}")
+                logger.error(f"Ошибка в on_page_change_for_actor : {e}")
 
 # ----------------------------------------room
 async def on_page_change_for_room(call: types.CallbackQuery, widget: Button, dialog_manager: DialogManager):

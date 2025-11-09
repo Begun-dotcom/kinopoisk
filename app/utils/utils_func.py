@@ -2,6 +2,7 @@ from aiogram.enums import ContentType
 from aiogram_dialog.api.entities import MediaAttachment, MediaId
 
 from app.config import setting
+from app.utils.utils import full_categories
 
 
 def select_func(language : str):
@@ -19,9 +20,9 @@ async def get_content_getter(film, current_page, page_len, total_page, page, fil
     overview = film.get('overview', 'Описание отсутствует')
     rating = film.get('vote_average', '0')
     if len(overview) > 400:
-        overview = overview[:397] + "..."
+        overview = overview[:100] + "..."
     text = (
-        f"🎬 <b>Название:</b> {film.get('title', 'Отсутствует')}\n\n"
+        f"🎬 <b>Название:</b> {film.get('title', 'Без названия')}\n\n"
         f"<b>📝 Сюжет:</b>\n<em> {overview}</em> \n\n"
         f"<b>⭐ Рейтинг:</b> {'★' * min(5, int(float(rating) // 2))}{'☆' * (5 - min(5, int(float(rating) // 2)))} <code>({rating}/10)</code>\n"
         f"<b>📅 Год выхода:</b> {film.get('release_date', 'Отсутствует')[:4] if film.get('overview') else 'Отсутствует'}\n ")
@@ -64,3 +65,25 @@ def extract_chat_id_from_update(update_data: dict) -> int | None:
     except (KeyError, TypeError):
         return None
     return None
+
+
+async def create_complete_category_mapping(api_genres):
+    result = []
+    for genre in api_genres:
+        genre_name = genre['name']
+        beautiful_name = full_categories.get(genre_name, genre_name)
+        result.append({
+            'id': genre['id'],
+            'name': beautiful_name,
+            'original_name': genre_name,
+            'callback_data': f"genre_{genre['id']}"
+        })
+    return result
+
+async def get_genres(genres_list : list):
+    genres_name = []
+    if genres_list:
+        for gen in genres_list:
+            genres_name.append(gen.get("name", None))
+    all_genres = ", ".join(genres_name)
+    return all_genres
