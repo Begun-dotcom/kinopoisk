@@ -11,7 +11,7 @@ from app.bot.kb.user_kb import start_kb
 from app.config import setting
 from app.dao.dao import BannerDao, UserDao, FavoriteDao
 from app.utils.schemas import SUser, SUserLang
-from app.utils.utils import language_text, main_text_ru, main_text_en, main_top_en, main_top_ru
+from app.utils.utils import language_text, main_text_ru, main_text_en, main_top_en, main_top_ru, sponsor_text
 from app.utils.utils_func import get_content_getter, get_default_content, create_complete_category_mapping, get_genres
 
 
@@ -40,7 +40,8 @@ async def language_getter(dialog_manager: DialogManager, **kwargs):
 async def main_getter(dialog_manager: DialogManager, **kwargs):
     try:
         caption = ("🎬 <b>Главное меню «CINEMA WORLD»</b>\n"
-                   "Выберите способ поиска идеального фильма: 🍿")
+                   "Выберите способ поиска идеального фильма: 🍿\n"
+                   "<i>Данные предоставлены The Movie Database (TMDb)</i>")
         user_id = dialog_manager.start_data.get("user_id")
         language = dialog_manager.start_data.get("language", "ru")
         session = dialog_manager.middleware_data["session_with_commit"]
@@ -140,7 +141,7 @@ async def show_info_getter(dialog_manager: DialogManager, **kwargs):
             genres_list = films.get("genres", "Отсутствует")
             genres = await get_genres(genres_list=genres_list)
             if films.get("backdrop_path"):
-                image = f"https://image.tmdb.org/t/p/w500{films.get('backdrop_path ')}"
+                image = f"https://image.tmdb.org/t/p/w500{films.get('backdrop_path')}"
             text = (
                     f"<b>📋 КАРТОЧКА ФИЛЬМА</b>\n\n"
                     f"<b>🎬 Название:</b> {films.get('title', 'Не указано')}\n"
@@ -225,6 +226,7 @@ async def select_top_getter(dialog_manager: DialogManager, **kwargs):
                                                                                     file_id=MediaId(image))}
     except Exception as e:
         logger.error(f"Ошибка в select_top_getter: {e}")
+        return None
 
 async def show_top_movies_getter(dialog_manager: DialogManager, **kwargs):
     try:
@@ -267,7 +269,6 @@ async def show_random_movies_getter(dialog_manager: DialogManager, **kwargs):
         aio_session = dialog_manager.middleware_data["aiohttp_session"]
         client = Movies(aio_session)
         topics_films = await client.get_random_movies(language=language)
-        print(topics_films)
         if topics_films:
             count = len(topics_films)
             random_page = random.randint(0, count-1)
@@ -284,7 +285,8 @@ async def show_random_movies_getter(dialog_manager: DialogManager, **kwargs):
                 f"🎬 <b>Название:</b> {film.get('title', 'Отсутствует')}\n\n"
                 f"<b>📝 Сюжет:</b>\n<em> {overview}</em> \n\n"
                 f"<b>⭐ Рейтинг:</b> {'★' * min(5, int(float(rating) // 2))}{'☆' * (5 - min(5, int(float(rating) // 2)))} <code>({rating}/10)</code>\n"
-                f"<b>📅 Год выхода:</b> {film.get('release_date', 'Отсутствует')[:4] if film.get('overview') else 'Отсутствует'}\n ")
+                f"<b>📅 Год выхода:</b> {film.get('release_date', 'Отсутствует')[:4] if film.get('overview') else 'Отсутствует'}\n\n "
+                f"{sponsor_text}")
             return {"photo": MediaAttachment(type=ContentType.PHOTO, file_id=MediaId(photo_url)),
                     "text": text,
                     "show_button_next": True
@@ -317,11 +319,12 @@ async def input_actor_getter(dialog_manager: DialogManager, **kwargs):
         return {"image": MediaAttachment(ContentType.PHOTO,file_id=MediaId(image))}
     except Exception as e:
         logger.error(f"Ошибка в select_category_getter: {e}")
+        return None
 
 
 async def show_all_actor_getter(dialog_manager: DialogManager, **kwargs):
     try:
-        caption = ("👤 *Выберите актера*")
+        caption = ("👤 *Выберите актера 👇*")
         session = dialog_manager.middleware_data["session_with_commit"]
         language = dialog_manager.start_data.get("language", "ru")
         actor = dialog_manager.dialog_data["actor_name"]
@@ -335,6 +338,7 @@ async def show_all_actor_getter(dialog_manager: DialogManager, **kwargs):
         return {"caption": caption, "text": result, "image" : MediaAttachment(type=ContentType.PHOTO, file_id=MediaId(image))}
     except Exception as e:
         logger.error(f"Ошибка: {e}")
+        return None
 
 async def show_actor_movies_getter(dialog_manager: DialogManager, **kwargs):
     try:
@@ -364,7 +368,8 @@ async def show_actor_movies_getter(dialog_manager: DialogManager, **kwargs):
                 f"🎬 <b>Название:</b> {film.get('title', 'Отсутствует')}\n\n"
                 f"<b>📝 Сюжет:</b>\n<em> {overview}</em> \n\n"
                 f"<b>⭐ Рейтинг:</b> {'★' * min(5, int(float(rating) // 2))}{'☆' * (5 - min(5, int(float(rating) // 2)))} <code>({rating}/10)</code>\n"
-                f"<b>📅 Год выхода:</b> {film.get('release_date', 'Отсутствует')[:4] if film.get('overview') else 'Отсутствует'}\n ")
+                f"<b>📅 Год выхода:</b> {film.get('release_date', 'Отсутствует')[:4] if film.get('overview') else 'Отсутствует'}\n\n"
+                f"{sponsor_text}")
             return {"photo": MediaAttachment(type=ContentType.PHOTO, file_id=MediaId(photo_url)),
                     "page": current_page + 1,
                     "total": len(all_by_actor),
@@ -397,7 +402,7 @@ async def show_actor_movies_getter(dialog_manager: DialogManager, **kwargs):
 async def user_room_getter(dialog_manager: DialogManager, **kwargs):
     try:
         session = dialog_manager.middleware_data["session_with_commit"]
-        caption = "Спонсор MTDb"
+        caption = f"{sponsor_text}"
         banner = setting.DEFAULT_IMG
         get_banner = await BannerDao(session=session).get_banner(name="menu")
         if get_banner:
@@ -407,6 +412,7 @@ async def user_room_getter(dialog_manager: DialogManager, **kwargs):
 
     except Exception as e:
         logger.error(f"Ошибка в user_room_getter: {e}")
+        return None
 
 async def show_fav_getter(dialog_manager: DialogManager, **kwargs):
     try:
@@ -440,6 +446,7 @@ async def show_fav_getter(dialog_manager: DialogManager, **kwargs):
                     f"<b>📖 Описание:</b> <em> {overview}</em> \n\n "
                     f"<b>⭐ Оценка:</b> {'★' * round(float(film.get('vote_average', 0)) / 2)} {'☆' * (5 - round(float(film.get('vote_average', 0)) / 2))} <code>({film.get('vote_average', '0')}/10)</code>\n"
                     f"<b>📅 Год выхода:</b> {film.get('release_date', '?')[:4] if film.get('release_date') else '?'}\n\n"
+                    f"{sponsor_text}"
                     )
             return {"photo": MediaAttachment(type=ContentType.PHOTO, file_id=MediaId(photo_url)),
                     "page": page + 1,

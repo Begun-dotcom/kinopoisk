@@ -6,6 +6,8 @@ from aiogram.types import Message, CallbackQuery
 from loguru import logger
 
 from app.core.database import async_session_maker
+from app.utils.utils import headers
+
 
 
 class BaseDatabaseMiddleware(BaseMiddleware):
@@ -67,7 +69,7 @@ class AiohttpSessionMiddleware(BaseMiddleware):
             logger.debug("🔄 Создание Aiohttp сессии")
             timeout = aiohttp.ClientTimeout(total=30, connect=10, sock_connect=10, sock_read=20)
             connector = aiohttp.TCPConnector(limit=100, limit_per_host=20, keepalive_timeout=30)
-            self._session = aiohttp.ClientSession(timeout=timeout, connector=connector)
+            self._session = aiohttp.ClientSession(timeout=timeout, connector=connector, headers = headers)
             self._initialized = True
         return self._session
 

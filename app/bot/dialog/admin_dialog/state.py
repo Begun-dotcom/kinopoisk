@@ -13,3 +13,6 @@ class AdminPanelStatus(StatesGroup):
 
 class AdminUserCount(StatesGroup):
     get_user_state = State()
+
+class AdminRec(StatesGroup):
+    set_rec_state = State()

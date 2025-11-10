@@ -210,7 +210,7 @@ def show_random_window():
 # -------------------------------------actor
 def select_name_actor_window():
     return Window(DynamicMedia(selector="image"),
-        Format(text="👤 *Введите имя актера*"),
+        Format(text="👤 *Введите имя актера 👇*"),
         TextInput(id="input_search",
                   on_success=get_actor_name_handler,
                   type_factory=str),

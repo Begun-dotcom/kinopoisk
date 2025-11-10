@@ -11,12 +11,14 @@ async def admin_log_getter(dialog_manager: DialogManager, **kwargs):
         return {"caption" : caption, "text" : text_admin_kb}
     except Exception as e:
         logger.error(f"Ошибка: {e}")
+        return None
 
 async def select_table_getter(dialog_manager: DialogManager, **kwargs):
     try:
         return {"text": banner_text}
     except Exception as e:
         logger.error(f"Ошибка в select_category_getter: {e}")
+        return None
 
 async def get_status_getter(dialog_manager: DialogManager, **kwargs):
     try:

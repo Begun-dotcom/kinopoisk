@@ -2,7 +2,7 @@ from aiogram.enums import ContentType
 from aiogram_dialog.api.entities import MediaAttachment, MediaId
 
 from app.config import setting
-from app.utils.utils import full_categories
+from app.utils.utils import full_categories, sponsor_text
 
 
 def select_func(language : str):
@@ -25,7 +25,8 @@ async def get_content_getter(film, current_page, page_len, total_page, page, fil
         f"🎬 <b>Название:</b> {film.get('title', 'Без названия')}\n\n"
         f"<b>📝 Сюжет:</b>\n<em> {overview}</em> \n\n"
         f"<b>⭐ Рейтинг:</b> {'★' * min(5, int(float(rating) // 2))}{'☆' * (5 - min(5, int(float(rating) // 2)))} <code>({rating}/10)</code>\n"
-        f"<b>📅 Год выхода:</b> {film.get('release_date', 'Отсутствует')[:4] if film.get('overview') else 'Отсутствует'}\n ")
+        f"<b>📅 Год выхода:</b> {film.get('release_date', 'Отсутствует')[:4] if film.get('overview') else 'Отсутствует'}\n\n"
+        f"{sponsor_text}")
     return {"photo": MediaAttachment(type=ContentType.PHOTO, file_id=MediaId(photo_url)),
             "page": current_page + 1,
             "total": len(films),

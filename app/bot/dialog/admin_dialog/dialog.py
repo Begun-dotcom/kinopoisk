@@ -1,7 +1,7 @@
 from aiogram_dialog import Dialog
 
 from app.bot.dialog.admin_dialog.windows import get_log_window, add_banner_windows, input_name_table_window, \
-    get_status_window
+    get_status_window, set_rec_window
 
 admin_panel = Dialog(
     get_log_window(),
@@ -15,3 +15,9 @@ input_name_table_window(),
 admin_user_count = Dialog(
 get_status_window()
 )
+
+admin_set_rec = Dialog(
+    set_rec_window()
+)
+
+

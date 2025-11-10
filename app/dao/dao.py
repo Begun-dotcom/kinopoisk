@@ -40,6 +40,23 @@ class UserDao(BaseDao):
 
         except SQLAlchemyError as e:
             logger.error(f"Ошибка получения данных из {self.model.__name__}: {e}")
+            return None
+
+    async def get_user_id(self, filters : BaseModel | None = None):
+        try:
+            filter_dict = filters.model_dump(exclude_unset=True) if filters else {}
+            query = select(self.model).filter_by(**filter_dict)
+            result = await self._session.execute(query)
+            logger.info(f"Данные из {self.model.__name__} с параметрами {filters} получены успешно")
+            all_user = result.scalars().all()
+            return [user.telegram_id for user in all_user]
+
+        except SQLAlchemyError as e:
+            logger.error(f"Ошибка получения данных из {self.model.__name__}: {e}")
+            return None
+        except Exception as e:
+            logger.error(f"Ошибка получения данных из {self.model.__name__}: {e}")
+            return None
 
 class BannerDao(BaseDao):
     model = Banner

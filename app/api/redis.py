@@ -19,7 +19,7 @@ class MoviesCached:
 
     async def get_content_for_fav(self, movies_id : int, language : str, client_movies):
         try:
-            redis_key = f"{self.base_url}/movie/{movies_id}"
+            redis_key = f"{self.base_url}/movie/{movies_id}/{language}"
             async with await self.get_redis_client() as redis_client:
                 cached_movies = await redis_client.get(redis_key)
                 if cached_movies:
@@ -40,7 +40,7 @@ class MoviesCached:
 
     async def get_user_fav(self, movies_id : int, language : str, client_movies, user_id : int):
         try:
-            redis_key = f"{self.base_url}/movie/{movies_id}/{user_id}"
+            redis_key = f"{self.base_url}/movie/{movies_id}/{user_id}/{language}"
             async with await self.get_redis_client() as redis_client:
                 cached_movies = await redis_client.get(redis_key)
                 if cached_movies:
@@ -61,7 +61,7 @@ class MoviesCached:
 
     async def get_content_by_category(self, genre_id : str, page : int, language : str, client_movies):
         try:
-            redis_key = f"{self.base_url}/discover/movie/{genre_id}/{page}"
+            redis_key = f"{self.base_url}/discover/movie/{genre_id}/{page}/{language}"
             async with await self.get_redis_client() as redis_client:
                 cached_movies = await redis_client.get(redis_key)
                 if cached_movies:
@@ -124,7 +124,7 @@ class MoviesCached:
 
     async def get_content_actor_movies(self, actor_id: int, language: str, client_movies):
         try:
-            redis_key = f"{self.base_url}/person/{actor_id}/movie_credits"
+            redis_key = f"{self.base_url}/person/{actor_id}/movie_credits/{language}"
             async with await self.get_redis_client() as redis_client:
                 cached_movies = await redis_client.get(redis_key)
                 if cached_movies:

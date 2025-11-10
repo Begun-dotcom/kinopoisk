@@ -54,23 +54,23 @@ async def updated(request: Request):
 
 async def handle_context_error(error: Exception, request: Request):
     """Обрабатывает ошибки контекста"""
-    if "Context not found for intent id" in str(error):
-        try:
-            # Пытаемся получить данные из запроса
-            update_data = await request.json()
-            chat_id = extract_chat_id_from_update(update_data)
+    # if "Context not found for intent id" in str(error):
+    try:
+        # Пытаемся получить данные из запроса
+        update_data = await request.json()
+        chat_id = extract_chat_id_from_update(update_data)
 
-            if chat_id:
-                await bot.send_message(
-                    chat_id=chat_id,
-                    text="Сессия сброшена. Пожалуйста, начните заново /start"
-                )
-                logger.info(f"Сообщение о сбросе отправлено для chat_id: {chat_id}")
-            else:
-                logger.warning("Не удалось извлечь chat_id для отправки уведомления")
+        if chat_id:
+            await bot.send_message(
+                chat_id=chat_id,
+                text="Сессия сброшена. Пожалуйста, начните заново /start"
+            )
+            logger.info(f"Сообщение о сбросе отправлено для chat_id: {chat_id}")
+        else:
+            logger.warning("Не удалось извлечь chat_id для отправки уведомления")
 
-        except Exception as inner_e:
-            logger.error(f"Ошибка при обработке context error: {inner_e}")
+    except Exception as inner_e:
+        logger.error(f"Ошибка при обработке context error: {inner_e}")
 
 
 #

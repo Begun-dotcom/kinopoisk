@@ -101,8 +101,10 @@ async def on_page_change(call: types.CallbackQuery, widget: Button, dialog_manag
          elif widget.widget_id == "info":
              user_id = dialog_manager.start_data.get("user_id")
              movies_id = dialog_manager.dialog_data["movies_id"]
+             language = dialog_manager.start_data.get("language")
              await dialog_manager.start(ShowInfo.show_info_by_movies, data={"movies_id" : movies_id,
-                                                                            "user_id" : user_id})
+                                                                            "user_id" : user_id,
+                                                                            "language" : language})
          elif widget.widget_id == "like":
              session = dialog_manager.middleware_data["session_with_commit"]
              user_id = dialog_manager.start_data.get("user_id")

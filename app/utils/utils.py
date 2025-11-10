@@ -36,7 +36,7 @@ main_top_en = [
 banner_text = [{"name" : "menu"},
                {"name" : "category"}]
 
-text_admin_kb = ["Изменить баннер", "Пользователи"]
+text_admin_kb = ["Изменить баннер", "Пользователи", "Получить лог", "Реклама"]
 
 full_categories = {
         "боевик": "💥 Боевик",
@@ -59,3 +59,9 @@ full_categories = {
         "военный": "🎖️ Военный",
         "вестерн": "🤠 Вестерн"
     }
+headers = {
+            "Accept": "*/*",
+            "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/138.0.0.0 YaBrowser/25.8.0.0 Safari/537.36"
+        }
+
+sponsor_text = "\n\n📡 Данные предоставлены The Movie Database"

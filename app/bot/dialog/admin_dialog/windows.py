@@ -6,8 +6,8 @@ from aiogram_dialog.widgets.kbd import Group, Select, Cancel
 from aiogram_dialog.widgets.text import Const, Format
 
 from app.bot.dialog.admin_dialog.getters import admin_log_getter, select_table_getter, get_status_getter
-from app.bot.dialog.admin_dialog.handlers import on_check_admin_menu, add_image_banner, select_table
-from app.bot.dialog.admin_dialog.state import AdminPapel, AdminPanelBanner, AdminUserCount
+from app.bot.dialog.admin_dialog.handlers import on_check_admin_menu, add_image_banner, select_table, set_rec
+from app.bot.dialog.admin_dialog.state import AdminPapel, AdminPanelBanner, AdminUserCount, AdminRec
 
 
 def get_log_window():
@@ -56,4 +56,17 @@ def get_status_window():
         Cancel(Const(text="🏠 Главное меню")),
         getter=get_status_getter,
         state=AdminUserCount.get_user_state
+    )
+
+
+def set_rec_window():
+    return Window(
+        Format(text="Введите текст рекламы"),
+        TextInput(id="input_search",
+                  on_success=set_rec,
+                  type_factory=str),
+        Group(Cancel(Const("↩️ Назад")),
+              ),
+        state= AdminRec.set_rec_state
+
     )
