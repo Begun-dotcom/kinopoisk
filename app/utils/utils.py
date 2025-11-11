@@ -64,4 +64,4 @@ headers = {
             "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/138.0.0.0 YaBrowser/25.8.0.0 Safari/537.36"
         }
 
-sponsor_text = "\n\n📡 Данные предоставлены The Movie Database"
+sponsor_text = "📡 Данные предоставлены The Movie Database"

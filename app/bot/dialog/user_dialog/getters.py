@@ -202,7 +202,7 @@ async def show_search_movies_getter(dialog_manager: DialogManager, **kwargs):
             default_content = await get_default_content()
             return default_content
     except Exception as e:
-        logger.error(f"Ошибка: {e}")
+        logger.error(f"Ошибка show_search_movies_getter: {e}")
         default_content = await get_default_content()
         return default_content
 
@@ -285,7 +285,7 @@ async def show_random_movies_getter(dialog_manager: DialogManager, **kwargs):
                 f"🎬 <b>Название:</b> {film.get('title', 'Отсутствует')}\n\n"
                 f"<b>📝 Сюжет:</b>\n<em> {overview}</em> \n\n"
                 f"<b>⭐ Рейтинг:</b> {'★' * min(5, int(float(rating) // 2))}{'☆' * (5 - min(5, int(float(rating) // 2)))} <code>({rating}/10)</code>\n"
-                f"<b>📅 Год выхода:</b> {film.get('release_date', 'Отсутствует')[:4] if film.get('overview') else 'Отсутствует'}\n\n "
+                f"<b>📅 Год выхода:</b> {film.get('release_date', 'Отсутствует')[:4] if film.get('overview') else 'Отсутствует'}\n"
                 f"{sponsor_text}")
             return {"photo": MediaAttachment(type=ContentType.PHOTO, file_id=MediaId(photo_url)),
                     "text": text,
@@ -337,7 +337,7 @@ async def show_all_actor_getter(dialog_manager: DialogManager, **kwargs):
         result = await client.find_all_actor_by_search(actor_name=actor, language=language)
         return {"caption": caption, "text": result, "image" : MediaAttachment(type=ContentType.PHOTO, file_id=MediaId(image))}
     except Exception as e:
-        logger.error(f"Ошибка: {e}")
+        logger.error(f"Ошибка show_all_actor_getter: {e}")
         return None
 
 async def show_actor_movies_getter(dialog_manager: DialogManager, **kwargs):
@@ -368,7 +368,7 @@ async def show_actor_movies_getter(dialog_manager: DialogManager, **kwargs):
                 f"🎬 <b>Название:</b> {film.get('title', 'Отсутствует')}\n\n"
                 f"<b>📝 Сюжет:</b>\n<em> {overview}</em> \n\n"
                 f"<b>⭐ Рейтинг:</b> {'★' * min(5, int(float(rating) // 2))}{'☆' * (5 - min(5, int(float(rating) // 2)))} <code>({rating}/10)</code>\n"
-                f"<b>📅 Год выхода:</b> {film.get('release_date', 'Отсутствует')[:4] if film.get('overview') else 'Отсутствует'}\n\n"
+                f"<b>📅 Год выхода:</b> {film.get('release_date', 'Отсутствует')[:4] if film.get('overview') else 'Отсутствует'}\n"
                 f"{sponsor_text}")
             return {"photo": MediaAttachment(type=ContentType.PHOTO, file_id=MediaId(photo_url)),
                     "page": current_page + 1,
@@ -445,7 +445,7 @@ async def show_fav_getter(dialog_manager: DialogManager, **kwargs):
                     f"<b>🎭 Название:</b> {film.get('title', 'Не указано')}\n\n"
                     f"<b>📖 Описание:</b> <em> {overview}</em> \n\n "
                     f"<b>⭐ Оценка:</b> {'★' * round(float(film.get('vote_average', 0)) / 2)} {'☆' * (5 - round(float(film.get('vote_average', 0)) / 2))} <code>({film.get('vote_average', '0')}/10)</code>\n"
-                    f"<b>📅 Год выхода:</b> {film.get('release_date', '?')[:4] if film.get('release_date') else '?'}\n\n"
+                    f"<b>📅 Год выхода:</b> {film.get('release_date', '?')[:4] if film.get('release_date') else '?'}\n"
                     f"{sponsor_text}"
                     )
             return {"photo": MediaAttachment(type=ContentType.PHOTO, file_id=MediaId(photo_url)),
